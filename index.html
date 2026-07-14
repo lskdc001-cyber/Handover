@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>차량 인도 스케줄 — PRODUCT EXPERT</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#12161C">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="인도스케줄">
+<style>
+  :root{
+    --ink:#12161C; --panel:#1C232E; --bg:#EEF0F3; --card:#FFFFFF;
+    --line:#D7DBE2; --silver:#8A93A0; --blue:#0A5BD3; --blue-soft:#E7F0FE;
+    --amber:#B97509; --amber-soft:#FBF1DC; --green:#1F7A3D; --green-soft:#E2F3E8;
+    --gray:#6B7280; --gray-soft:#ECEDEF; --red:#C0392B;
+    --radius:10px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:'Apple SD Gothic Neo','Malgun Gothic','Segoe UI',sans-serif;
+    background:var(--bg); color:var(--ink); font-size:14px; line-height:1.5;
+  }
+  header{
+    background:var(--ink); color:#fff; padding:14px 18px;
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  }
+  .brand b{font-size:16px; letter-spacing:.4px; display:block;}
+  .brand span{font-size:11px; color:#9AA4B2; letter-spacing:2px; text-transform:uppercase;}
+  .head-right{margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  input[type="date"]{
+    background:#242C38; border:1px solid #3A4452; color:#fff;
+    padding:7px 10px; border-radius:8px; font-family:inherit; font-size:13px;
+  }
+  .btn{
+    border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:700;
+    cursor:pointer; font-family:inherit; transition:filter .15s;
+  }
+  .btn:hover{filter:brightness(1.08);}
+  .btn:focus-visible{outline:2px solid var(--blue); outline-offset:2px;}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+  .btn-blue{background:var(--blue); color:#fff;}
+  .btn-ghost{background:#242C38; color:#DDE3EA; border:1px solid #3A4452;}
+  .btn-light{background:var(--gray-soft); color:var(--ink);}
+  .btn-red{background:var(--red); color:#fff;}
+  .pe-badge{
+    display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:800;
+    background:#0F3E1F; color:#7BE39B; border:1px solid #1F7A3D;
+    padding:6px 10px; border-radius:20px;
+  }
+  .setup-warn{
+    background:#7A1F1F; color:#FFD9D9; font-size:12.5px; padding:10px 18px; line-height:1.6;
+  }
+  .infobar{display:flex; gap:8px; overflow-x:auto; padding:12px 18px;}
+  .pe-chip{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:8px 12px; min-width:150px; flex:0 0 auto;
+  }
+  .pe-chip .nm{font-weight:800; font-size:13px;}
+  .pe-chip .loc{font-size:12px; margin-top:2px;}
+  .loc-gn{color:var(--blue);} .loc-cd{color:var(--green);} .loc-off{color:var(--gray);}
+  .pe-chip .memo{font-size:11px; color:var(--silver); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:170px;}
+  .wrap{padding:0 18px 60px;}
+  .grid-scroll{overflow-x:auto; background:var(--card); border:1px solid var(--line); border-radius:var(--radius); min-height:120px;}
+  .loading{padding:40px; text-align:center; color:var(--silver); font-size:13px;}
+  table{border-collapse:collapse; width:100%; min-width:720px;}
+  th,td{border-bottom:1px solid var(--line); border-right:1px solid var(--line); padding:0;}
+  th:last-child, td:last-child{border-right:none;}
+  thead th{
+    background:var(--panel); color:#fff; font-size:13px; padding:10px 8px;
+    position:sticky; top:0; z-index:2;
+  }
+  thead th small{display:block; font-weight:400; font-size:11px; color:#A9B2BF; margin-top:2px;}
+  th.time-h{width:64px;}
+  td.time-c{
+    text-align:center; font-weight:800; font-size:12px; color:var(--silver);
+    background:#F7F8FA; width:64px; padding:8px 4px;
+  }
+  td.slot{vertical-align:top; min-width:130px; height:52px; padding:4px; position:relative;}
+  td.slot.off-col{background:repeating-linear-gradient(45deg,#F3F4F6,#F3F4F6 6px,#EBECEF 6px,#EBECEF 12px);}
+  .add-hit{
+    position:absolute; inset:4px; border-radius:6px; border:1px dashed transparent;
+    background:none; cursor:pointer; color:transparent; font-size:18px; width:calc(100% - 8px);
+  }
+  td.slot:hover .add-hit{border-color:var(--line); color:var(--silver);}
+  .bk{
+    border-radius:7px; padding:6px 8px; margin-bottom:4px; cursor:pointer;
+    border:1px solid; font-size:12px; position:relative; z-index:1;
+  }
+  .bk .cu{font-weight:800;}
+  .bk .cr{font-size:11px;}
+  .bk .rp{font-size:11px; opacity:.75;}
+  .bk-요청{background:var(--amber-soft); border-color:#E5C88F; color:#7A5006;}
+  .bk-확정{background:var(--blue-soft); border-color:#A9C8F5; color:#0A4098;}
+  .bk-인도완료{background:var(--green-soft); border-color:#A7D9B8; color:#15522A;}
+  .bk-취소{background:var(--gray-soft); border-color:#D3D5D9; color:var(--gray); text-decoration:line-through;}
+  .stbadge{font-size:10px; font-weight:800; border-radius:4px; padding:1px 5px; float:right;}
+  .overlay{
+    position:fixed; inset:0; background:rgba(10,14,20,.55); display:none;
+    align-items:flex-start; justify-content:center; padding:24px 14px; z-index:50; overflow-y:auto;
+  }
+  .overlay.open{display:flex;}
+  .modal{
+    background:var(--card); border-radius:14px; width:100%; max-width:440px;
+    padding:20px; box-shadow:0 18px 48px rgba(0,0,0,.28);
+  }
+  .modal h3{font-size:16px; margin-bottom:4px;}
+  .modal .sub{font-size:12px; color:var(--silver); margin-bottom:14px;}
+  .fld{margin-bottom:12px;}
+  .fld label{display:block; font-size:12px; font-weight:700; margin-bottom:4px; color:#3A4452;}
+  .fld input,.fld select{
+    width:100%; border:1px solid var(--line); border-radius:8px; padding:9px 10px;
+    font-family:inherit; font-size:14px; background:#FBFCFD;
+  }
+  .fld input:focus,.fld select:focus{outline:2px solid var(--blue); border-color:transparent;}
+  .fld .hint{font-size:11px; color:var(--silver); margin-top:3px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .modal-actions{display:flex; gap:8px; justify-content:flex-end; margin-top:16px; flex-wrap:wrap;}
+  .lock-note{
+    background:#FBF6EA; border:1px solid #EAD9AE; color:#7A5A12;
+    border-radius:8px; padding:10px 12px; font-size:12.5px; margin-top:12px;
+  }
+  .detail-line{display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px dashed var(--line); font-size:13.5px;}
+  .detail-line b{color:#3A4452; font-weight:700;}
+  .toast{
+    position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:#fff; padding:10px 18px; border-radius:24px;
+    font-size:13px; opacity:0; transition:opacity .25s; pointer-events:none; z-index:99;
+    max-width:90vw; text-align:center;
+  }
+  .toast.show{opacity:1;}
+  .empty-note{padding:14px 18px 0; font-size:12px; color:var(--silver);}
+  .fab{
+    position:fixed; right:20px; bottom:20px; z-index:20;
+    background:var(--blue); color:#fff; border:none; border-radius:28px;
+    padding:14px 20px; font-size:14px; font-weight:800; font-family:inherit;
+    box-shadow:0 8px 20px rgba(10,91,211,.35); cursor:pointer;
+  }
+  .pe-tools{display:flex; gap:8px; padding:0 18px 12px; flex-wrap:wrap;}
+  .pes-row{display:grid; grid-template-columns:1fr 1.6fr; gap:8px; margin-bottom:8px;}
+  @media (max-width:640px){
+    header{padding:12px 14px;}
+    .wrap{padding:0 10px 80px;}
+    .infobar{padding:10px;}
+  }
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <b>차량 인도 스케줄</b>
+    <span>Product Expert · Delivery Board</span>
+  </div>
+  <div class="head-right">
+    <input type="date" id="datePick" aria-label="날짜 선택">
+    <button class="btn btn-blue" id="installBtn" style="display:none">📱 앱 설치</button>
+    <button class="btn btn-ghost" id="peLoginBtn">🔒 PE 모드</button>
+    <span class="pe-badge" id="peBadge" style="display:none">✓ PE 모드 <button class="btn" style="background:none;color:#7BE39B;padding:0 0 0 4px;font-size:12px" id="peLogout">해제</button></span>
+  </div>
+</header>
+
+<div class="setup-warn" id="setupWarn" style="display:none">
+  ⚠ 아직 서버 주소가 설정되지 않았습니다. 이 파일을 메모장으로 열어 상단의
+  <b>SCRIPT_URL</b>에 구글 앱스 스크립트 배포 URL을 붙여넣으세요. (설치안내서 3단계 참고)
+</div>
+
+<div class="infobar" id="infobar"></div>
+<div class="pe-tools" id="peTools" style="display:none">
+  <button class="btn btn-light" id="peInfoBtn">근무·휴무 설정</button>
+  <button class="btn btn-light" id="peNamesBtn">PE 명단·이메일</button>
+  <button class="btn btn-light" id="pePinBtn">비밀번호 변경</button>
+</div>
+
+<div class="wrap">
+  <div class="grid-scroll">
+    <div class="loading" id="loadingMsg">스케줄을 불러오는 중...</div>
+    <table id="grid" aria-label="시간대별 인도 스케줄" style="display:none"></table>
+  </div>
+  <p class="empty-note">※ 팀 공용 보드입니다. 영업직원은 <b>신규 등록만</b> 가능하며(등록 시 담당 PE에게 이메일 자동 발송), 수정·시간변경·취소는 <b>담당 PE에게 요청</b>해 주세요. PE가 확정·취소 처리하면 등록한 영업직원 이메일로 자동 통보됩니다.</p>
+</div>
+
+<button class="fab" id="fabAdd">＋ 인도 등록</button>
+
+<!-- 등록/수정 모달 -->
+<div class="overlay" id="formOverlay">
+  <div class="modal">
+    <h3 id="formTitle">인도 스케줄 등록</h3>
+    <p class="sub" id="formSub">영업직원용 · 등록 후 수정은 PE에게 요청</p>
+    <div class="row2">
+      <div class="fld"><label>시간</label><select id="fTime"></select></div>
+      <div class="fld"><label>담당 PE</label><select id="fPe"></select></div>
+    </div>
+    <div class="fld"><label>고객명 *</label><input id="fCustomer" placeholder="예: 홍길동" maxlength="30"></div>
+    <div class="fld"><label>차종 *</label><input id="fCar" placeholder="예: E300 4MATIC" maxlength="40"></div>
+    <div class="row2">
+      <div class="fld"><label>영업직원 *</label><input id="fRep" placeholder="본인 이름" maxlength="20"></div>
+      <div class="fld"><label>전시장</label>
+        <select id="fBranch"><option>강남</option><option>청담</option><option>기타</option></select></div>
+    </div>
+    <div class="fld" id="fEmailWrap"><label>영업직원 이메일 *</label>
+      <input id="fRepEmail" type="email" placeholder="예: hong@hansung.co.kr" maxlength="60">
+      <div class="hint">확정·취소 시 이 주소로 자동 통보됩니다.</div>
+    </div>
+    <div class="fld"><label>업무구분</label>
+      <select id="fType"><option>출고인도</option><option>시승</option><option>케어</option><option>서류</option><option>기타</option></select></div>
+    <div class="fld"><label>메모</label><input id="fMemo" placeholder="특이사항 (선택)" maxlength="80"></div>
+    <div class="modal-actions">
+      <button class="btn btn-light" data-close>닫기</button>
+      <button class="btn btn-blue" id="fSave">등록</button>
+    </div>
+  </div>
+</div>
+
+<!-- 상세 모달 -->
+<div class="overlay" id="detailOverlay">
+  <div class="modal">
+    <h3>예약 상세</h3>
+    <p class="sub" id="dWhen"></p>
+    <div id="dBody"></div>
+    <div id="dPeActions" style="display:none">
+      <div class="fld" style="margin-top:14px"><label>상태 변경 (PE 전용) — 저장 시 영업직원에게 이메일 통보</label>
+        <select id="dStatus"><option>요청</option><option>확정</option><option>인도완료</option><option>취소</option></select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-red" id="dDelete">삭제</button>
+        <button class="btn btn-light" id="dEdit">내용 수정</button>
+        <button class="btn btn-blue" id="dApply">상태 저장</button>
+        <button class="btn btn-light" data-close>닫기</button>
+      </div>
+    </div>
+    <div id="dLockNote" class="lock-note" style="display:none"></div>
+    <div class="modal-actions" id="dCloseOnly" style="display:none">
+      <button class="btn btn-light" data-close>확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- PE 근무 설정 모달 -->
+<div class="overlay" id="peInfoOverlay">
+  <div class="modal">
+    <h3>근무·휴무 설정</h3>
+    <p class="sub" id="peInfoDate"></p>
+    <div id="peInfoBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-light" data-close>닫기</button>
+      <button class="btn btn-blue" id="peInfoSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- PE 명단·이메일 모달 -->
+<div class="overlay" id="pesOverlay">
+  <div class="modal">
+    <h3>PE 명단·이메일 관리</h3>
+    <p class="sub">이메일은 예약 알림 수신용입니다. 화면에는 이름만 표시됩니다.</p>
+    <div id="pesBody"></div>
+    <button class="btn btn-light" id="pesAddRow" style="margin-top:4px">＋ 직원 추가</button>
+    <div class="modal-actions">
+      <button class="btn btn-light" data-close>닫기</button>
+      <button class="btn btn-blue" id="pesSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ★★★ 설치 시 여기만 수정 ★★★
+     구글 앱스 스크립트 배포 후 받은 웹 앱 URL을 따옴표 안에 붙여넣으세요.
+     예: var SCRIPT_URL = "https://script.google.com/macros/s/AKfycb.../exec";  */
+  var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxe6X-PHFmnOEHMXveYf2zBW9vqH2Yto2y9b0pMO15Mxynd4wQ4rNrEG9aVR1EM7EfRyA/exec";
+
+  const TIMES = []; for(let h=9;h<=19;h++) TIMES.push(String(h).padStart(2,"0")+":00");
+
+  let curDate = todayStr();
+  let day = { bookings:[], peInfo:{}, pes:[] };
+  let peMode = false;         // 세션 한정
+  let pePin = "";             // PE 모드 중 서버 검증용 (세션 메모리에만 보관)
+  let editingId = null;
+  let detailId = null;
+  let busy = false;
+
+  const $ = (id)=>document.getElementById(id);
+  function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+  function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2600); }
+  function fmtDate(ds){ const [y,m,d]=ds.split("-"); const w=["일","월","화","수","목","금","토"][new Date(ds+"T00:00:00").getDay()]; return `${Number(m)}월 ${Number(d)}일 (${w})`; }
+  function esc(s){ return String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  function validEmail(s){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s); }
+
+  /* ── 서버 통신 ── */
+  async function api(action, payload){
+    if(!SCRIPT_URL){ toast("서버 주소가 설정되지 않았습니다 (설치안내서 참고)"); throw new Error("no url"); }
+    const res = await fetch(SCRIPT_URL, {
+      method:"POST",
+      headers:{ "Content-Type":"text/plain;charset=utf-8" },
+      body: JSON.stringify(Object.assign({action:action}, payload||{}))
+    });
+    const data = await res.json();
+    if(!data.ok && data.error) toast(data.error);
+    return data;
+  }
+
+  async function refresh(){
+    $("loadingMsg").style.display="block"; $("grid").style.display="none";
+    try{
+      const r = await api("getDay", {date:curDate});
+      if(r.ok){ day.bookings=r.bookings||[]; day.peInfo=r.peInfo||{}; day.pes=r.pes||[]; }
+    }catch(e){ $("loadingMsg").textContent="불러오기 실패 — 인터넷 연결과 서버 주소를 확인하세요."; return; }
+    render();
+  }
+
+  /* ── 렌더 ── */
+  function peLoc(name){ const inf=day.peInfo[name]||{}; return inf.loc||""; }
+  function render(){
+    const bar = $("infobar"); bar.innerHTML="";
+    day.pes.forEach(name=>{
+      const inf = day.peInfo[name]||{};
+      const loc = inf.loc||"미정";
+      const cls = loc==="강남"?"loc-gn":loc==="청담"?"loc-cd":"loc-off";
+      const drive = inf.drive===undefined? "" : (inf.drive?" · 시승 O":" · 시승 X");
+      const div = document.createElement("div"); div.className="pe-chip";
+      div.innerHTML = `<div class="nm">${esc(name)}</div><div class="loc ${cls}">${esc(loc)}${drive}</div>`+(inf.memo?`<div class="memo">${esc(inf.memo)}</div>`:"");
+      bar.appendChild(div);
+    });
+
+    const grid = $("grid");
+    let html = `<thead><tr><th class="time-h">시간</th>`;
+    day.pes.forEach(name=>{ html += `<th>${esc(name)}<small>${esc(peLoc(name)||"근무지 미정")}</small></th>`; });
+    html += `</tr></thead><tbody>`;
+    TIMES.forEach(t=>{
+      html += `<tr><td class="time-c">${t}</td>`;
+      day.pes.forEach(name=>{
+        const off = peLoc(name)==="휴무";
+        const items = day.bookings.filter(b=>b.time===t && b.pe===name);
+        html += `<td class="slot${off?" off-col":""}">`;
+        items.forEach(b=>{
+          html += `<div class="bk bk-${b.status}" data-id="${b.id}" role="button" tabindex="0">
+            <span class="stbadge">${b.status}</span>
+            <div class="cu">${esc(b.customer)}</div>
+            <div class="cr">${esc(b.car)} · ${esc(b.type)}</div>
+            <div class="rp">영업: ${esc(b.rep)}</div></div>`;
+        });
+        if(!off) html += `<button class="add-hit" data-time="${t}" data-pe="${esc(name)}" aria-label="${t} ${esc(name)} 등록">＋</button>`;
+        html += `</td>`;
+      });
+      html += `</tr>`;
+    });
+    html += `</tbody>`;
+    grid.innerHTML = html;
+    $("loadingMsg").style.display="none"; grid.style.display="table";
+
+    $("peBadge").style.display = peMode? "inline-flex":"none";
+    $("peLoginBtn").style.display = peMode? "none":"inline-block";
+    $("peTools").style.display = peMode? "flex":"none";
+  }
+
+  /* ── 등록/수정 폼 ── */
+  function openForm(time, pe, booking){
+    editingId = booking? booking.id : null;
+    $("formTitle").textContent = booking? "예약 내용 수정 (PE)" : "인도 스케줄 등록";
+    $("formSub").textContent = booking? fmtDate(curDate)+" · PE 모드 수정" : "등록 시 담당 PE에게 이메일이 발송됩니다";
+    $("fTime").innerHTML = TIMES.map(t=>`<option${t===(booking?booking.time:time)?" selected":""}>${t}</option>`).join("");
+    $("fPe").innerHTML = day.pes.map(p=>{
+      const off = peLoc(p)==="휴무";
+      const sel = p===(booking?booking.pe:pe)?" selected":"";
+      return `<option value="${esc(p)}"${sel}${off?" disabled":""}>${esc(p)}${off?" (휴무)":""}</option>`;
+    }).join("");
+    $("fCustomer").value = booking?booking.customer:"";
+    $("fCar").value = booking?booking.car:"";
+    $("fRep").value = booking?booking.rep:"";
+    $("fBranch").value = booking?booking.branch||"강남":"강남";
+    $("fType").value = booking?booking.type:"출고인도";
+    $("fMemo").value = booking?(booking.memo||""):"";
+    $("fEmailWrap").style.display = booking? "none":"block";   // 수정 시 이메일은 서버 보관값 유지
+    $("fRepEmail").value = "";
+    $("fSave").textContent = booking? "수정 저장":"등록";
+    $("formOverlay").classList.add("open");
+    setTimeout(()=>$("fCustomer").focus(),50);
+  }
+
+  async function submitForm(){
+    if(busy) return;
+    const customer=$("fCustomer").value.trim(), car=$("fCar").value.trim(), rep=$("fRep").value.trim();
+    const time=$("fTime").value, pe=$("fPe").value;
+    if(!customer||!car||!rep){ toast("고객명·차종·영업직원은 필수입니다"); return; }
+    if(peLoc(pe)==="휴무"){ toast(pe+" 님은 휴무입니다"); return; }
+    const dup = day.bookings.find(b=>b.time===time&&b.pe===pe&&b.status!=="취소"&&b.id!==editingId);
+    if(dup && !confirm(`${time} ${pe} 님에게 이미 [${dup.customer}] 예약이 있습니다.\n같은 시간에 추가 등록할까요?`)) return;
+
+    busy=true; $("fSave").disabled=true; $("fSave").textContent="저장 중...";
+    try{
+      if(editingId){
+        const r = await api("editBooking", { pin:pePin, id:editingId,
+          fields:{time,pe,customer,car,rep,branch:$("fBranch").value,type:$("fType").value,memo:$("fMemo").value.trim()} });
+        if(r.ok){ $("formOverlay").classList.remove("open"); toast("수정되었습니다"); await refresh(); }
+      }else{
+        const repEmail = $("fRepEmail").value.trim();
+        if(!validEmail(repEmail)){ toast("올바른 이메일을 입력해 주세요"); return; }
+        const r = await api("addBooking", { date:curDate,
+          booking:{time,pe,customer,car,rep,repEmail,branch:$("fBranch").value,type:$("fType").value,memo:$("fMemo").value.trim()} });
+        if(r.ok){
+          $("formOverlay").classList.remove("open");
+          toast(r.mailed? "등록 완료 — 담당 PE에게 메일을 보냈습니다":"등록 완료 (PE 이메일 미설정으로 알림 생략)");
+          await refresh();
+        }
+      }
+    }catch(e){ /* api()에서 안내됨 */ }
+    finally{ busy=false; $("fSave").disabled=false; $("fSave").textContent=editingId?"수정 저장":"등록"; editingId=null; }
+  }
+
+  /* ── 상세 ── */
+  function openDetail(id){
+    const b = day.bookings.find(x=>x.id===id); if(!b) return;
+    detailId = id;
+    $("dWhen").textContent = `${fmtDate(curDate)} ${b.time} · 담당 PE: ${b.pe}`;
+    $("dBody").innerHTML = `
+      <div class="detail-line"><b>고객명</b><span>${esc(b.customer)}</span></div>
+      <div class="detail-line"><b>차종</b><span>${esc(b.car)}</span></div>
+      <div class="detail-line"><b>업무구분</b><span>${esc(b.type)}</span></div>
+      <div class="detail-line"><b>영업직원</b><span>${esc(b.rep)} (${esc(b.branch)})</span></div>
+      <div class="detail-line"><b>상태</b><span>${esc(b.status)}</span></div>
+      ${b.memo?`<div class="detail-line"><b>메모</b><span>${esc(b.memo)}</span></div>`:""}`;
+    if(peMode){
+      $("dPeActions").style.display="block"; $("dLockNote").style.display="none"; $("dCloseOnly").style.display="none";
+      $("dStatus").value = b.status;
+    }else{
+      $("dPeActions").style.display="none";
+      $("dLockNote").style.display="block";
+      $("dLockNote").innerHTML = `🔒 수정·시간변경·취소는 <b>담당 PE(${esc(b.pe)})</b>에게 요청해 주세요.<br>처리 결과는 등록하신 이메일로 통보됩니다.`;
+      $("dCloseOnly").style.display="flex";
+    }
+    $("detailOverlay").classList.add("open");
+  }
+
+  /* ── PE 근무 설정 ── */
+  function openPeInfo(){
+    $("peInfoDate").textContent = fmtDate(curDate)+" 근무 정보";
+    const body = $("peInfoBody"); body.innerHTML="";
+    day.pes.forEach((name,i)=>{
+      const inf = day.peInfo[name]||{};
+      body.insertAdjacentHTML("beforeend",`
+        <div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px">
+          <b style="font-size:13px">${esc(name)}</b>
+          <div class="row2" style="margin-top:6px">
+            <div class="fld" style="margin:0"><label>근무지</label>
+              <select data-pi-loc="${i}">${["미정","강남","청담","휴무"].map(l=>`<option${(inf.loc||"미정")===l?" selected":""}>${l}</option>`).join("")}</select></div>
+            <div class="fld" style="margin:0"><label>시승담당</label>
+              <select data-pi-drive="${i}">
+                <option value=""${inf.drive===undefined?" selected":""}>-</option>
+                <option value="1"${inf.drive===true?" selected":""}>O</option>
+                <option value="0"${inf.drive===false?" selected":""}>X (시승·케어만)</option>
+              </select></div>
+          </div>
+          <div class="fld" style="margin:8px 0 0"><label>비고</label>
+            <input data-pi-memo="${i}" value="${esc(inf.memo||"")}" placeholder="예: 10시 출근, 스케줄 문의는 개인 연락" maxlength="60"></div>
+        </div>`);
+    });
+    $("peInfoOverlay").classList.add("open");
+  }
+  async function savePeInfo(){
+    const info = {};
+    day.pes.forEach((name,i)=>{
+      const loc = document.querySelector(`[data-pi-loc="${i}"]`).value;
+      const dv = document.querySelector(`[data-pi-drive="${i}"]`).value;
+      const memo = document.querySelector(`[data-pi-memo="${i}"]`).value.trim();
+      info[name] = { loc: loc==="미정"?"":loc, drive: dv===""?undefined:dv==="1", memo };
+    });
+    const r = await api("savePeInfo", {pin:pePin, date:curDate, peInfo:info});
+    if(r.ok){ $("peInfoOverlay").classList.remove("open"); toast("근무 정보 저장 완료"); await refresh(); }
+  }
+
+  /* ── PE 명단·이메일 ── */
+  function openPes(){
+    const body = $("pesBody"); body.innerHTML="";
+    day.pes.forEach(name=>addPesRow(name,""));
+    $("pesOverlay").classList.add("open");
+  }
+  function addPesRow(name,email){
+    $("pesBody").insertAdjacentHTML("beforeend",
+      `<div class="pes-row"><input class="pes-nm" placeholder="이름" value="${esc(name)}" maxlength="15">
+       <input class="pes-em" placeholder="알림 이메일 (기존 유지 시 비움)" value="${esc(email)}" maxlength="60"></div>`);
+  }
+  async function savePes(){
+    const names=[...document.querySelectorAll(".pes-nm")].map(i=>i.value.trim());
+    const emails=[...document.querySelectorAll(".pes-em")].map(i=>i.value.trim());
+    const pes=[];
+    for(let i=0;i<names.length;i++){
+      if(!names[i]) continue;
+      if(emails[i] && !validEmail(emails[i])){ toast(names[i]+" 이메일 형식을 확인해 주세요"); return; }
+      pes.push({name:names[i], email:emails[i]});
+    }
+    if(!pes.length){ toast("최소 1명이 필요합니다"); return; }
+    if(!confirm("주의: 이메일 칸을 비워두면 해당 직원의 기존 이메일이 삭제됩니다.\n(이메일 확인·수정은 구글시트 'PE명단' 탭에서도 가능)\n저장할까요?")) return;
+    const r = await api("savePes", {pin:pePin, pes});
+    if(r.ok){ $("pesOverlay").classList.remove("open"); toast("PE 명단 저장 완료"); await refresh(); }
+  }
+
+  /* ── 이벤트 ── */
+  document.addEventListener("click",(e)=>{
+    const t=e.target;
+    if(t.matches("[data-close]")){ t.closest(".overlay").classList.remove("open"); return; }
+    if(t.classList.contains("add-hit")){ openForm(t.dataset.time, t.dataset.pe, null); return; }
+    const bk=t.closest(".bk"); if(bk){ openDetail(bk.dataset.id); return; }
+  });
+  document.addEventListener("keydown",(e)=>{
+    if(e.key==="Enter" && e.target.classList && e.target.classList.contains("bk")) openDetail(e.target.dataset.id);
+    if(e.key==="Escape") document.querySelectorAll(".overlay.open").forEach(o=>o.classList.remove("open"));
+  });
+
+  $("fabAdd").onclick = ()=>{ if(!day.pes.length){ toast("불러오는 중입니다"); return; } openForm(TIMES[0], day.pes.find(p=>peLoc(p)!=="휴무")||day.pes[0], null); };
+  $("fSave").onclick = submitForm;
+  $("datePick").onchange = async (e)=>{ curDate=e.target.value||todayStr(); await refresh(); };
+
+  $("peLoginBtn").onclick = async ()=>{
+    const pin = prompt("PE 비밀번호를 입력하세요");
+    if(pin===null) return;
+    const r = await api("verifyPin", {pin});
+    if(r.ok){ peMode=true; pePin=pin; toast("PE 모드 활성화"); render(); }
+    else toast("비밀번호가 올바르지 않습니다");
+  };
+  $("peLogout").onclick = ()=>{ peMode=false; pePin=""; toast("PE 모드 해제"); render(); };
+
+  $("dApply").onclick = async ()=>{
+    const r = await api("updateStatus", {pin:pePin, id:detailId, status:$("dStatus").value});
+    if(r.ok){
+      $("detailOverlay").classList.remove("open");
+      toast(r.mailed? "저장 완료 — 영업직원에게 메일을 보냈습니다":"저장 완료 (영업직원 이메일 없음)");
+      await refresh();
+    }
+  };
+  $("dDelete").onclick = async ()=>{
+    if(!confirm("이 예약을 완전히 삭제할까요? 되돌릴 수 없습니다.\n(영업직원에게 통보하려면 삭제 대신 '취소' 상태로 저장하세요)")) return;
+    const r = await api("deleteBooking", {pin:pePin, id:detailId});
+    if(r.ok){ $("detailOverlay").classList.remove("open"); toast("삭제되었습니다"); await refresh(); }
+  };
+  $("dEdit").onclick = ()=>{
+    const b = day.bookings.find(x=>x.id===detailId); if(!b) return;
+    $("detailOverlay").classList.remove("open");
+    openForm(b.time, b.pe, b);
+  };
+
+  $("peInfoBtn").onclick = openPeInfo;
+  $("peInfoSave").onclick = savePeInfo;
+  $("peNamesBtn").onclick = openPes;
+  $("pesAddRow").onclick = ()=>addPesRow("","");
+  $("pesSave").onclick = savePes;
+  $("pePinBtn").onclick = async ()=>{
+    const p1 = prompt("새 비밀번호 (4자 이상)"); if(p1===null) return;
+    if(!p1 || p1.length<4){ toast("4자 이상 입력해 주세요"); return; }
+    const r = await api("setPin", {pin:pePin, newPin:p1});
+    if(r.ok){ pePin=p1; toast("비밀번호가 변경되었습니다"); }
+  };
+
+  /* ── 앱 설치 (PWA) ── */
+  let deferredPrompt = null;
+  window.addEventListener("beforeinstallprompt",(e)=>{
+    e.preventDefault(); deferredPrompt = e;
+    $("installBtn").style.display = "inline-block";
+  });
+  $("installBtn").onclick = async ()=>{
+    if(deferredPrompt){
+      deferredPrompt.prompt();
+      const c = await deferredPrompt.userChoice;
+      if(c.outcome === "accepted"){ $("installBtn").style.display="none"; toast("홈 화면에 앱이 설치되었습니다"); }
+      deferredPrompt = null;
+    }else{
+      alert("아이폰: Safari 하단 공유(⬆) 버튼 → '홈 화면에 추가'\n안드로이드: 크롬 메뉴(⋮) → '앱 설치' 또는 '홈 화면에 추가'");
+    }
+  };
+  // 아이폰 사파리는 beforeinstallprompt 미지원 → 안내 버튼 항상 표시
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+  if(isIOS && !isStandalone) $("installBtn").style.display = "inline-block";
+
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+  }
+
+  /* ── 시작 ── */
+  (async function init(){
+    $("datePick").value = curDate;
+    if(!SCRIPT_URL){ $("setupWarn").style.display="block"; $("loadingMsg").textContent="서버 주소 설정 후 사용할 수 있습니다."; return; }
+    await refresh();
+  })();
+})();
+</script>
+</body>
+</html>

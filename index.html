@@ -159,10 +159,14 @@
     <span>Product Expert · Delivery Board</span>
   </div>
   <div class="head-right">
+    <span id="userChip" style="display:none;font-size:12px;color:#DDE3EA">
+      👤 <b id="userName"></b>
+      <button class="btn" style="background:none;color:#9AA4B2;padding:0 4px;font-size:12px" id="myPwBtn">비번변경</button>
+      <button class="btn" style="background:none;color:#9AA4B2;padding:0 4px;font-size:12px" id="logoutBtn">로그아웃</button>
+    </span>
     <input type="date" id="datePick" aria-label="날짜 선택">
     <button class="btn btn-blue" id="installBtn" style="display:none">📱 앱 설치</button>
-    <button class="btn btn-ghost" id="peLoginBtn">🔒 PE 모드</button>
-    <span class="pe-badge" id="peBadge" style="display:none">✓ PE 모드 <button class="btn" style="background:none;color:#7BE39B;padding:0 0 0 4px;font-size:12px" id="peLogout">해제</button></span>
+    <span class="pe-badge" id="peBadge" style="display:none">✓ PE</span>
   </div>
 </header>
 
@@ -175,7 +179,8 @@
 <div class="pe-tools" id="peTools" style="display:none">
   <button class="btn btn-light" id="peInfoBtn">근무·휴무 설정</button>
   <button class="btn btn-light" id="peNamesBtn">PE 명단·이메일</button>
-  <button class="btn btn-light" id="pePinBtn">비밀번호 변경</button>
+  <button class="btn btn-light" id="accAdminBtn">직원 계정 관리</button>
+  <button class="btn btn-light" id="exportBtn">📊 엑셀 내보내기</button>
 </div>
 
 <div class="wrap">
@@ -193,21 +198,22 @@
   <div class="modal">
     <h3 id="formTitle">인도 스케줄 등록</h3>
     <p class="sub" id="formSub">영업직원용 · 등록 후 수정은 PE에게 요청</p>
+    <div class="fld" id="fDateWrap" style="display:none"><label>날짜 (PE 수정 — 다른 날로 이동 가능)</label>
+      <input type="date" id="fDate"></div>
     <div class="row2">
       <div class="fld"><label>시간</label><select id="fTime"></select></div>
       <div class="fld"><label>담당 PE</label><select id="fPe"></select></div>
     </div>
     <div class="fld"><label>고객명 *</label><input id="fCustomer" placeholder="예: 홍길동" maxlength="30"></div>
     <div class="fld"><label>차종 *</label><input id="fCar" placeholder="예: E300 4MATIC" maxlength="40"></div>
+    <div class="fld"><label>차대번호 <span style="font-weight:400;color:var(--silver)">(선택)</span></label>
+      <input id="fVin" placeholder="예: W1KZF8DB1PA123456" maxlength="20" style="text-transform:uppercase"></div>
     <div class="row2">
-      <div class="fld"><label>영업직원 *</label><input id="fRep" placeholder="본인 이름" maxlength="20"></div>
+      <div class="fld" id="fRepWrap" style="display:none"><label>영업직원 (PE 수정)</label><input id="fRep" maxlength="20"></div>
       <div class="fld"><label>전시장</label>
         <select id="fBranch"><option>강남</option><option>청담</option><option>기타</option></select></div>
     </div>
-    <div class="fld" id="fEmailWrap"><label>영업직원 이메일 *</label>
-      <input id="fRepEmail" type="email" placeholder="예: hong@hansung.co.kr" maxlength="60">
-      <div class="hint">확정·취소 시 이 주소로 자동 통보됩니다.</div>
-    </div>
+    <div class="fld" id="fWho" style="background:#F2F6FD;border:1px solid #C9DCF7;border-radius:8px;padding:9px 11px;font-size:12.5px;color:#0A4098"></div>
     <div class="fld"><label>업무구분</label>
       <select id="fType"><option>출고인도</option><option>시승</option><option>케어</option><option>서류</option><option>기타</option></select></div>
     <div class="fld"><label>메모</label><input id="fMemo" placeholder="특이사항 (선택)" maxlength="80"></div>
@@ -236,6 +242,10 @@
       </div>
     </div>
     <div id="dLockNote" class="lock-note" style="display:none"></div>
+    <div class="modal-actions" id="dOwnActions" style="display:none">
+      <button class="btn btn-red" id="dOwnCancel">본인 예약 취소</button>
+      <button class="btn btn-light" data-close>닫기</button>
+    </div>
     <div class="modal-actions" id="dCloseOnly" style="display:none">
       <button class="btn btn-light" data-close>확인</button>
     </div>
@@ -269,6 +279,44 @@
   </div>
 </div>
 
+<!-- 로그인 모달 -->
+<div class="overlay" id="authOverlay">
+  <div class="modal">
+    <h3 id="authTitle">로그인</h3>
+    <p class="sub">영업직원·PE 공용 — ID는 이메일입니다</p>
+    <div class="fld" id="aNameWrap" style="display:none"><label>이름 *</label><input id="aName" placeholder="실명 입력" maxlength="20"></div>
+    <div class="fld"><label>이메일 (ID) *</label><input id="aEmail" placeholder="hong@hansung.co.kr" maxlength="60">
+      <div class="hint">가입은 회사 이메일(@hansung.co.kr)만 가능합니다</div></div>
+    <div class="fld"><label>비밀번호 * <span style="font-weight:400;color:var(--silver)">(6자 이상)</span></label><input id="aPw" type="password" maxlength="40"></div>
+    <div class="fld" id="aPw2Wrap" style="display:none"><label>비밀번호 확인 *</label><input id="aPw2" type="password" maxlength="40"></div>
+    <div class="fld" id="aPeWrap" style="display:none">
+      <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;cursor:pointer">
+        <input type="checkbox" id="aWantPe" style="width:auto;margin-top:2px">
+        <span>PE(출고직원)로 가입 신청<br><span style="color:var(--silver);font-size:11.5px">기존 PE의 승인 후 PE 권한이 활성화됩니다. 이름은 근무표의 표기와 동일하게 입력하세요.</span></span>
+      </label>
+    </div>
+    <div class="fld" id="aCodeWrap" style="display:none"><label>이메일 인증번호 *</label>
+      <input id="aCode" inputmode="numeric" maxlength="6" placeholder="메일로 받은 6자리 숫자">
+      <div class="hint">10분간 유효 · 메일이 없으면 스팸함 확인 · <a href="#" id="aResend">인증번호 재발송</a></div>
+    </div>
+    <div class="lock-note" style="margin-top:0">다른 사이트에서 쓰는 비밀번호를 재사용하지 마세요. 접수·확정 알림이 이 이메일로 발송됩니다.</div>
+    <div class="modal-actions">
+      <button class="btn btn-light" id="authSwitch">처음이신가요? 가입하기</button>
+      <button class="btn btn-blue" id="authGo">로그인</button>
+    </div>
+  </div>
+</div>
+
+<!-- 직원 계정 관리 (PE) -->
+<div class="overlay" id="accOverlay">
+  <div class="modal">
+    <h3>직원 계정 관리</h3>
+    <p class="sub">비밀번호 분실 시 임시 비밀번호로 초기화해 주세요</p>
+    <div id="accList" style="max-height:300px;overflow-y:auto"></div>
+    <div class="modal-actions"><button class="btn btn-light" data-close>닫기</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -282,6 +330,10 @@
 
   const TIMES = []; for(let h=9;h<=19;h++) TIMES.push(String(h).padStart(2,"0")+":00");
 
+  let auth = null;
+  try{ auth = JSON.parse(localStorage.getItem("hd_auth")||"null"); }catch(e){ auth = null; }
+  let signupMode = false;
+  let codeStage = false;   // 가입 인증번호 입력 단계
   let curDate = todayStr();
   let day = { bookings:[], peInfo:{}, pes:[] };
   let peMode = false;         // 세션 한정
@@ -303,11 +355,80 @@
     const res = await fetch(SCRIPT_URL, {
       method:"POST",
       headers:{ "Content-Type":"text/plain;charset=utf-8" },
-      body: JSON.stringify(Object.assign({action:action}, payload||{}))
+      body: JSON.stringify(Object.assign({action:action, token:(auth&&auth.token)||""}, payload||{}))
     });
     const data = await res.json();
+    if(!data.ok && data.error==="AUTH"){ doLogout(false); toast("로그인이 필요합니다"); throw new Error("auth"); }
     if(!data.ok && data.error) toast(data.error);
     return data;
+  }
+
+  /* ── 로그인·가입 ── */
+  function showAuth(){ $("authOverlay").classList.add("open"); setTimeout(()=>$("aEmail").focus(),50); }
+  function setAuthMode(signup){
+    signupMode = signup; codeStage = false;
+    $("aCodeWrap").style.display = "none"; $("aCode").value = "";
+    $("authTitle").textContent = signup? "직원 가입":"로그인";
+    $("aNameWrap").style.display = signup? "block":"none";
+    $("aPw2Wrap").style.display = signup? "block":"none";
+    $("aPeWrap").style.display = signup? "block":"none";
+    $("authGo").textContent = signup? "인증번호 받기":"로그인";
+    $("authSwitch").textContent = signup? "이미 계정이 있어요 → 로그인":"처음이신가요? 가입하기";
+  }
+  function saveAuth(a){ auth=a; try{ localStorage.setItem("hd_auth", JSON.stringify(a)); }catch(e){} applyAuthUI(); }
+  function doLogout(msg=true){
+    auth=null; peMode=false; pePin="";
+    try{ localStorage.removeItem("hd_auth"); }catch(e){}
+    applyAuthUI(); showAuth(); if(msg) toast("로그아웃되었습니다");
+  }
+  function applyAuthUI(){
+    peMode = !!(auth && (auth.role === "PE" || auth.role === "MASTER"));
+    if(!peMode) pePin = "";
+    $("peBadge").textContent = (auth && auth.role==="MASTER") ? "✓ MASTER" : "✓ PE";
+    $("userChip").style.display = auth? "inline-flex":"none";
+    if(auth) $("userName").textContent = auth.name +
+      (auth.role==="PE"||auth.role==="MASTER" ? "" : auth.role==="PE대기" ? " (PE승인대기)" : "");
+  }
+  async function authGo(){
+    const email=$("aEmail").value.trim(), pw=$("aPw").value;
+    if(!email||!pw){ toast("이메일과 비밀번호를 입력해 주세요"); return; }
+    if(signupMode){
+      const name=$("aName").value.trim();
+      if(!name){ toast("이름을 입력해 주세요"); return; }
+      if(!email.toLowerCase().endsWith("@hansung.co.kr")){ toast("회사 이메일(@hansung.co.kr)로만 가입할 수 있습니다"); return; }
+      if(pw.length<6){ toast("비밀번호는 6자 이상"); return; }
+      if(pw!==$("aPw2").value){ toast("비밀번호 확인이 일치하지 않습니다"); return; }
+      if(!codeStage){
+        // 1단계: 인증번호 발송
+        const r = await api("signupStart",{email,name,password:pw,wantPe:$("aWantPe").checked});
+        if(r.ok){
+          codeStage = true;
+          $("aCodeWrap").style.display = "block";
+          $("authGo").textContent = "인증 완료 · 가입하기";
+          toast("인증번호를 이메일로 보냈습니다 — 스팸함도 확인하세요");
+          $("aCode").focus();
+        }
+      }else{
+        // 2단계: 인증번호 확인 → 계정 생성
+        const code = $("aCode").value.trim();
+        if(code.length!==6){ toast("6자리 인증번호를 입력해 주세요"); return; }
+        const r = await api("signupVerify",{email,code});
+        if(r.ok){
+          saveAuth({token:r.token,name:r.name,email:r.email,role:r.role});
+          $("authOverlay").classList.remove("open");
+          toast(r.role==="PE대기" ? r.name+" 님, 가입 완료 — PE 승인 대기 중입니다" : r.name+" 님, 가입 완료!");
+          await refresh();
+        }
+      }
+    }else{
+      const r = await api("login",{email,password:pw});
+      if(r.ok){
+        saveAuth({token:r.token,name:r.name,email:r.email,role:r.role});
+        $("authOverlay").classList.remove("open");
+        toast(r.role==="PE" ? r.name+" PE님, 환영합니다" : r.name+" 님, 환영합니다");
+        await refresh();
+      }
+    }
   }
 
   async function refresh(){
@@ -334,8 +455,14 @@
     });
 
     const grid = $("grid");
+    const _todayS = todayStr();
+    const _n = new Date();
+    const _nowHM = String(_n.getHours()).padStart(2,"0")+":"+String(_n.getMinutes()).padStart(2,"0");
     let html = `<thead><tr><th class="time-h">시간</th>`;
-    day.pes.forEach(name=>{ html += `<th>${esc(name)}<small>${esc(peLoc(name)||"근무지 미정")}</small></th>`; });
+    day.pes.forEach(name=>{
+      const mine = peMode && auth && auth.name === name;
+      html += `<th>${esc(name)}${mine?" ⭐":""}<small>${mine?"내 스케줄 · ":""}${esc(peLoc(name)||"근무지 미정")}</small></th>`;
+    });
     html += `</tr></thead><tbody>`;
     TIMES.forEach(t=>{
       html += `<tr><td class="time-c">${t}</td>`;
@@ -353,7 +480,8 @@
             <div class="cr">${esc(b.car)} · ${esc(b.type)}</div>
             <div class="rp">영업: ${esc(b.rep)}</div></div>`;
         });
-        if(!off && !full) html += `<button class="add-hit" data-time="${t}" data-pe="${esc(name)}" aria-label="${t} ${esc(name)} 등록">＋</button>`;
+        const past = curDate<_todayS || (curDate===_todayS && t<=_nowHM);
+        if(!off && !full && !past) html += `<button class="add-hit" data-time="${t}" data-pe="${esc(name)}" aria-label="${t} ${esc(name)} 등록">＋</button>`;
         html += `</td>`;
       });
       html += `</tr>`;
@@ -363,7 +491,6 @@
     $("loadingMsg").style.display="none"; grid.style.display="table";
 
     $("peBadge").style.display = peMode? "inline-flex":"none";
-    $("peLoginBtn").style.display = peMode? "none":"inline-block";
     $("peTools").style.display = peMode? "flex":"none";
   }
 
@@ -380,12 +507,16 @@
     }).join("");
     $("fCustomer").value = booking?booking.customer:"";
     $("fCar").value = booking?booking.car:"";
+    $("fVin").value = booking?(booking.vin||""):"";
     $("fRep").value = booking?booking.rep:"";
+    $("fRepWrap").style.display = booking? "block":"none";   // PE 수정 시에만 노출
+    $("fDateWrap").style.display = booking? "block":"none";
+    $("fDate").value = curDate;
     $("fBranch").value = booking?booking.branch||"강남":"강남";
     $("fType").value = booking?booking.type:"출고인도";
     $("fMemo").value = booking?(booking.memo||""):"";
-    $("fEmailWrap").style.display = booking? "none":"block";   // 수정 시 이메일은 서버 보관값 유지
-    $("fRepEmail").value = "";
+    $("fWho").style.display = booking? "none":"block";
+    if(!booking && auth) $("fWho").textContent = "등록자: "+auth.name+" ("+auth.email+") — 접수·확정 메일이 자동 발송됩니다";
     $("fSave").textContent = booking? "수정 저장":"등록";
     $("formOverlay").classList.add("open");
     setTimeout(()=>$("fCustomer").focus(),50);
@@ -395,7 +526,13 @@
     if(busy) return;
     const customer=$("fCustomer").value.trim(), car=$("fCar").value.trim(), rep=$("fRep").value.trim();
     const time=$("fTime").value, pe=$("fPe").value;
-    if(!customer||!car||!rep){ toast("고객명·차종·영업직원은 필수입니다"); return; }
+    if(!customer||!car){ toast("고객명·차종은 필수입니다"); return; }
+    if(!editingId && !auth){ showAuth(); return; }
+    if(!editingId){
+      const _t=todayStr(), _nn=new Date();
+      const _hm=String(_nn.getHours()).padStart(2,"0")+":"+String(_nn.getMinutes()).padStart(2,"0");
+      if(curDate<_t || (curDate===_t && time<=_hm)){ toast("지난 날짜·시간에는 등록할 수 없습니다"); return; }
+    }
     if(peLoc(pe)==="휴무"){ toast(pe+" 님은 휴무입니다"); return; }
     // 슬롯 규칙: 시간대당 본예약 1건 + 대기 1건
     if(!editingId){
@@ -410,15 +547,20 @@
     try{
       if(editingId){
         const r = await api("editBooking", { pin:pePin, id:editingId,
-          fields:{time,pe,customer,car,rep,branch:$("fBranch").value,type:$("fType").value,memo:$("fMemo").value.trim()} });
-        if(r.ok){ $("formOverlay").classList.remove("open"); toast("수정되었습니다"); await refresh(); }
-      }else{
-        const repEmail = $("fRepEmail").value.trim();
-        if(!validEmail(repEmail)){ toast("올바른 이메일을 입력해 주세요"); return; }
-        const r = await api("addBooking", { date:curDate,
-          booking:{time,pe,customer,car,rep,repEmail,branch:$("fBranch").value,type:$("fType").value,memo:$("fMemo").value.trim()} });
+          fields:{date:$("fDate").value||curDate,time,pe,customer,car,rep,vin:$("fVin").value.trim().toUpperCase(),branch:$("fBranch").value,type:$("fType").value,memo:$("fMemo").value.trim()} });
         if(r.ok){
           $("formOverlay").classList.remove("open");
+          let m = "수정되었습니다";
+          if(r.moved && $("fDate").value && $("fDate").value!==curDate) m += " — "+$("fDate").value+" 보드에서 확인하세요";
+          if(r.promoted) m += " · 원래 자리의 대기자가 승격되었습니다";
+          toast(m); await refresh();
+        }
+      }else{
+        const r = await api("addBooking", { date:curDate,
+          booking:{time,pe,customer,car,vin:$("fVin").value.trim().toUpperCase(),branch:$("fBranch").value,type:$("fType").value,memo:$("fMemo").value.trim()} });
+        if(r.ok){
+          $("formOverlay").classList.remove("open");
+          if(r.dup){ toast("이미 접수된 예약입니다 (중복 등록 방지)"); await refresh(); return; }
           const what = r.status==="대기" ? "대기 1순위로 등록되었습니다" : "등록 완료";
           toast(r.mailed? what+" — 담당 PE에게 메일 발송":what+" (PE 이메일 미설정으로 알림 생략)");
           await refresh();
@@ -436,6 +578,7 @@
     $("dBody").innerHTML = `
       <div class="detail-line"><b>고객명</b><span>${esc(b.customer)}</span></div>
       <div class="detail-line"><b>차종</b><span>${esc(b.car)}</span></div>
+      ${b.vin?`<div class="detail-line"><b>차대번호</b><span>${esc(b.vin)}</span></div>`:""}
       <div class="detail-line"><b>업무구분</b><span>${esc(b.type)}</span></div>
       <div class="detail-line"><b>영업직원</b><span>${esc(b.rep)} (${esc(b.branch)})</span></div>
       <div class="detail-line"><b>상태</b><span>${esc(b.status)}</span></div>
@@ -445,9 +588,13 @@
       $("dStatus").value = b.status;
     }else{
       $("dPeActions").style.display="none";
+      const canSelf = !!b.own && (b.status==="요청" || b.status==="대기");
+      $("dOwnActions").style.display = canSelf? "flex":"none";
+      $("dCloseOnly").style.display = canSelf? "none":"flex";
       $("dLockNote").style.display="block";
-      $("dLockNote").innerHTML = `🔒 수정·시간변경·취소는 <b>담당 PE(${esc(b.pe)})</b>에게 요청해 주세요.<br>처리 결과는 등록하신 이메일로 통보됩니다.`;
-      $("dCloseOnly").style.display="flex";
+      $("dLockNote").innerHTML = canSelf
+        ? `본인이 등록한 예약입니다. <b>요청·대기 상태에서만</b> 직접 취소할 수 있고, 확정 후에는 담당 PE(${esc(b.pe)})에게 요청해야 합니다. 시간·날짜 변경도 PE에게 요청해 주세요.`
+        : `🔒 수정·시간변경·취소는 <b>담당 PE(${esc(b.pe)})</b>에게 요청해 주세요.<br>처리 결과는 등록하신 이메일로 통보됩니다.`;
     }
     $("detailOverlay").classList.add("open");
   }
@@ -478,6 +625,11 @@
     $("peInfoOverlay").classList.add("open");
   }
   async function savePeInfo(){
+    if(busy) return; busy=true;
+    $("peInfoSave").disabled=true; $("peInfoSave").textContent="저장 중...";
+    try{ await _savePeInfo(); } finally{ busy=false; $("peInfoSave").disabled=false; $("peInfoSave").textContent="저장"; }
+  }
+  async function _savePeInfo(){
     const info = {};
     day.pes.forEach((name,i)=>{
       const loc = document.querySelector(`[data-pi-loc="${i}"]`).value;
@@ -531,17 +683,14 @@
   $("fSave").onclick = submitForm;
   $("datePick").onchange = async (e)=>{ curDate=e.target.value||todayStr(); await refresh(); };
 
-  $("peLoginBtn").onclick = async ()=>{
-    const pin = prompt("PE 비밀번호를 입력하세요");
-    if(pin===null) return;
-    const r = await api("verifyPin", {pin});
-    if(r.ok){ peMode=true; pePin=pin; toast("PE 모드 활성화"); render(); }
-    else toast("비밀번호가 올바르지 않습니다");
-  };
-  $("peLogout").onclick = ()=>{ peMode=false; pePin=""; toast("PE 모드 해제"); render(); };
+  // PE 권한은 계정 역할로 자동 부여 (PIN 입력 불필요)
 
   $("dApply").onclick = async ()=>{
-    const r = await api("updateStatus", {pin:pePin, id:detailId, status:$("dStatus").value});
+    if(busy) return; busy=true;
+    $("dApply").disabled=true; $("dApply").textContent="저장 중...";
+    let r; try{ r = await api("updateStatus", {pin:pePin, id:detailId, status:$("dStatus").value}); }
+    catch(e){ r={ok:false}; }
+    finally{ busy=false; $("dApply").disabled=false; $("dApply").textContent="상태 저장"; }
     if(r.ok){
       $("detailOverlay").classList.remove("open");
       let msg = r.mailed? "저장 완료 — 영업직원에게 메일을 보냈습니다":"저장 완료 (영업직원 이메일 없음)";
@@ -551,9 +700,25 @@
     }
   };
   $("dDelete").onclick = async ()=>{
+    if(busy) return;
     if(!confirm("이 예약을 완전히 삭제할까요? 되돌릴 수 없습니다.\n(영업직원에게 통보하려면 삭제 대신 '취소' 상태로 저장하세요)")) return;
-    const r = await api("deleteBooking", {pin:pePin, id:detailId});
+    busy=true; $("dDelete").disabled=true;
+    let r; try{ r = await api("deleteBooking", {pin:pePin, id:detailId}); }
+    catch(e){ r={ok:false}; }
+    finally{ busy=false; $("dDelete").disabled=false; }
     if(r.ok){ $("detailOverlay").classList.remove("open"); toast("삭제되었습니다"); await refresh(); }
+  };
+  $("dOwnCancel").onclick = async ()=>{
+    if(busy) return;
+    if(!confirm("이 예약을 취소할까요?\n(취소 후 재등록은 가능하지만 순번은 새로 받게 됩니다)")) return;
+    busy=true; $("dOwnCancel").disabled=true; $("dOwnCancel").textContent="취소 중...";
+    let r; try{ r = await api("cancelOwn",{id:detailId}); }catch(e){ r={ok:false}; }
+    finally{ busy=false; $("dOwnCancel").disabled=false; $("dOwnCancel").textContent="본인 예약 취소"; }
+    if(r.ok){
+      $("detailOverlay").classList.remove("open");
+      toast("취소되었습니다 — 담당 PE에게 통보됨"+(r.promoted?" · 대기자 자동 승격":""));
+      await refresh();
+    }
   };
   $("dEdit").onclick = ()=>{
     const b = day.bookings.find(x=>x.id===detailId); if(!b) return;
@@ -561,17 +726,76 @@
     openForm(b.time, b.pe, b);
   };
 
+  $("authGo").onclick = authGo;
+  $("aResend").onclick = async (e)=>{
+    e.preventDefault();
+    const email=$("aEmail").value.trim(), name=$("aName").value.trim(), pw=$("aPw").value;
+    const r = await api("signupStart",{email,name,password:pw,wantPe:$("aWantPe").checked});
+    if(r.ok) toast("인증번호를 다시 보냈습니다");
+  };
+  $("authSwitch").onclick = ()=>setAuthMode(!signupMode);
+  $("logoutBtn").onclick = ()=>doLogout();
+  $("myPwBtn").onclick = async ()=>{
+    const o = prompt("현재 비밀번호"); if(o===null) return;
+    const n = prompt("새 비밀번호 (6자 이상)"); if(n===null) return;
+    const r = await api("changePw",{oldPw:o,newPw:n});
+    if(r.ok) toast("비밀번호가 변경되었습니다");
+  };
+  $("accAdminBtn").onclick = async ()=>{
+    const r = await api("listAccounts",{pin:pePin});
+    if(!r.ok) return;
+    const list=$("accList"); list.innerHTML = r.accounts.length? "" : "<p style='font-size:13px;color:var(--silver)'>가입된 계정이 없습니다</p>";
+    r.accounts.forEach(a=>{
+      const d=document.createElement("div");
+      d.style.cssText="display:flex;align-items:center;gap:8px;border-bottom:1px dashed var(--line);padding:8px 0;font-size:13px";
+      const roleTag = a.role==="PE" ? "🟢 PE" : a.role==="PE대기" ? "🟡 PE대기" : "영업";
+      d.innerHTML = `<span style="flex:1"><b>${esc(a.name)}</b> <span style="font-size:11px;color:var(--silver)">${roleTag}</span><br><span style="color:var(--silver);font-size:11.5px">${esc(a.email)}</span></span>`;
+      const pb=document.createElement("button"); pb.className="btn btn-light";
+      pb.textContent = a.role==="PE" ? "PE해제" : "PE승인";
+      pb.onclick = async ()=>{
+        const act = a.role==="PE" ? "revokePe" : "approvePe";
+        if(!confirm(a.name+" 님을 "+(a.role==="PE"?"PE에서 해제":"PE로 승인")+"할까요?")) return;
+        const rr = await api(act,{pin:pePin,email:a.email});
+        if(rr.ok){ toast("처리되었습니다"); $("accOverlay").classList.remove("open"); }
+      };
+      d.appendChild(pb);
+      const rb=document.createElement("button"); rb.className="btn btn-light"; rb.textContent="비번초기화";
+      rb.onclick = async ()=>{
+        const np = prompt(a.name+" 님의 임시 비밀번호 (6자 이상)"); if(np===null) return;
+        const rr = await api("adminResetPw",{pin:pePin,email:a.email,newPw:np});
+        if(rr.ok) toast("초기화 완료 — 임시 비밀번호를 본인에게 전달하세요");
+      };
+      const db=document.createElement("button"); db.className="btn btn-red"; db.textContent="삭제";
+      db.onclick = async ()=>{
+        if(!confirm(a.name+" ("+a.email+") 계정을 삭제할까요?")) return;
+        const rr = await api("deleteAccount",{pin:pePin,email:a.email});
+        if(rr.ok){ toast("삭제되었습니다"); d.remove(); }
+      };
+      d.appendChild(rb); d.appendChild(db); list.appendChild(d);
+    });
+    $("accOverlay").classList.add("open");
+  };
+  $("exportBtn").onclick = async ()=>{
+    const from = prompt("시작일 (YYYY-MM-DD)", curDate.slice(0,8)+"01"); if(from===null) return;
+    const to = prompt("종료일 (YYYY-MM-DD)", curDate); if(to===null) return;
+    const r = await api("exportRange",{pin:pePin,from:from.trim(),to:to.trim()});
+    if(!r.ok) return;
+    if(!r.rows || !r.rows.length){ toast("해당 기간에 예약이 없습니다"); return; }
+    const escCsv = v=>{ v=String(v??""); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
+    const csv = "\uFEFF"+[r.header, ...r.rows].map(row=>row.map(escCsv).join(",")).join("\r\n");
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "인도예약_"+from.trim()+"_"+to.trim()+".csv";
+    a.click(); URL.revokeObjectURL(a.href);
+    toast(r.rows.length+"건 내보내기 완료 — 엑셀에서 바로 열립니다");
+  };
   $("peInfoBtn").onclick = openPeInfo;
   $("peInfoSave").onclick = savePeInfo;
   $("peNamesBtn").onclick = openPes;
   $("pesAddRow").onclick = ()=>addPesRow("","");
   $("pesSave").onclick = savePes;
-  $("pePinBtn").onclick = async ()=>{
-    const p1 = prompt("새 비밀번호 (4자 이상)"); if(p1===null) return;
-    if(!p1 || p1.length<4){ toast("4자 이상 입력해 주세요"); return; }
-    const r = await api("setPin", {pin:pePin, newPin:p1});
-    if(r.ok){ pePin=p1; toast("비밀번호가 변경되었습니다"); }
-  };
+
 
   /* ── 앱 설치 (PWA) ── */
   let deferredPrompt = null;
@@ -601,8 +825,10 @@
   /* ── 시작 ── */
   (async function init(){
     $("datePick").value = curDate;
+    setAuthMode(false); applyAuthUI();
     if(!SCRIPT_URL){ $("setupWarn").style.display="block"; $("loadingMsg").textContent="서버 주소 설정 후 사용할 수 있습니다."; return; }
-    await refresh();
+    if(!auth){ $("loadingMsg").textContent="로그인 후 이용할 수 있습니다."; showAuth(); return; }
+    try{ await refresh(); }catch(e){}
   })();
 })();
 </script>

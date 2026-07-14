@@ -98,6 +98,7 @@
   .bk-확정{background:var(--blue-soft); border-color:#A9C8F5; color:#0A4098;}
   .bk-인도완료{background:var(--green-soft); border-color:#A7D9B8; color:#15522A;}
   .bk-취소{background:var(--gray-soft); border-color:#D3D5D9; color:var(--gray); text-decoration:line-through;}
+  .bk-대기{background:#F0E9FB; border-color:#CDB4EA; color:#5B2E91;}
   .stbadge{font-size:10px; font-weight:800; border-radius:4px; padding:1px 5px; float:right;}
   .overlay{
     position:fixed; inset:0; background:rgba(10,14,20,.55); display:none;
@@ -225,7 +226,7 @@
     <div id="dBody"></div>
     <div id="dPeActions" style="display:none">
       <div class="fld" style="margin-top:14px"><label>상태 변경 (PE 전용) — 저장 시 영업직원에게 이메일 통보</label>
-        <select id="dStatus"><option>요청</option><option>확정</option><option>인도완료</option><option>취소</option></select>
+        <select id="dStatus"><option>대기</option><option>요청</option><option>확정</option><option>인도완료</option><option>취소</option></select>
       </div>
       <div class="modal-actions">
         <button class="btn btn-red" id="dDelete">삭제</button>
@@ -341,15 +342,18 @@
       day.pes.forEach(name=>{
         const off = peLoc(name)==="휴무";
         const items = day.bookings.filter(b=>b.time===t && b.pe===name);
+        const mainCnt = items.filter(b=>b.status!=="취소"&&b.status!=="대기").length;
+        const waitCnt = items.filter(b=>b.status==="대기").length;
+        const full = mainCnt>=1 && waitCnt>=1;
         html += `<td class="slot${off?" off-col":""}">`;
         items.forEach(b=>{
           html += `<div class="bk bk-${b.status}" data-id="${b.id}" role="button" tabindex="0">
-            <span class="stbadge">${b.status}</span>
+            <span class="stbadge">${b.status==="대기"?"대기 1순위":b.status}</span>
             <div class="cu">${esc(b.customer)}</div>
             <div class="cr">${esc(b.car)} · ${esc(b.type)}</div>
             <div class="rp">영업: ${esc(b.rep)}</div></div>`;
         });
-        if(!off) html += `<button class="add-hit" data-time="${t}" data-pe="${esc(name)}" aria-label="${t} ${esc(name)} 등록">＋</button>`;
+        if(!off && !full) html += `<button class="add-hit" data-time="${t}" data-pe="${esc(name)}" aria-label="${t} ${esc(name)} 등록">＋</button>`;
         html += `</td>`;
       });
       html += `</tr>`;
@@ -393,8 +397,14 @@
     const time=$("fTime").value, pe=$("fPe").value;
     if(!customer||!car||!rep){ toast("고객명·차종·영업직원은 필수입니다"); return; }
     if(peLoc(pe)==="휴무"){ toast(pe+" 님은 휴무입니다"); return; }
-    const dup = day.bookings.find(b=>b.time===time&&b.pe===pe&&b.status!=="취소"&&b.id!==editingId);
-    if(dup && !confirm(`${time} ${pe} 님에게 이미 [${dup.customer}] 예약이 있습니다.\n같은 시간에 추가 등록할까요?`)) return;
+    // 슬롯 규칙: 시간대당 본예약 1건 + 대기 1건
+    if(!editingId){
+      const inSlot = day.bookings.filter(b=>b.time===time&&b.pe===pe);
+      const mainCnt = inSlot.filter(b=>b.status!=="취소"&&b.status!=="대기").length;
+      const waitCnt = inSlot.filter(b=>b.status==="대기").length;
+      if(mainCnt>=1 && waitCnt>=1){ toast("이 시간은 예약·대기가 모두 찼습니다. 다른 시간을 선택해 주세요."); return; }
+      if(mainCnt>=1 && !confirm(`${time} ${pe} 님에게 이미 예약이 있습니다.\n[대기 1순위]로 등록할까요?\n(기존 예약 취소 시 자동 승격되어 메일로 안내됩니다)`)) return;
+    }
 
     busy=true; $("fSave").disabled=true; $("fSave").textContent="저장 중...";
     try{
@@ -409,7 +419,8 @@
           booking:{time,pe,customer,car,rep,repEmail,branch:$("fBranch").value,type:$("fType").value,memo:$("fMemo").value.trim()} });
         if(r.ok){
           $("formOverlay").classList.remove("open");
-          toast(r.mailed? "등록 완료 — 담당 PE에게 메일을 보냈습니다":"등록 완료 (PE 이메일 미설정으로 알림 생략)");
+          const what = r.status==="대기" ? "대기 1순위로 등록되었습니다" : "등록 완료";
+          toast(r.mailed? what+" — 담당 PE에게 메일 발송":what+" (PE 이메일 미설정으로 알림 생략)");
           await refresh();
         }
       }
@@ -533,7 +544,9 @@
     const r = await api("updateStatus", {pin:pePin, id:detailId, status:$("dStatus").value});
     if(r.ok){
       $("detailOverlay").classList.remove("open");
-      toast(r.mailed? "저장 완료 — 영업직원에게 메일을 보냈습니다":"저장 완료 (영업직원 이메일 없음)");
+      let msg = r.mailed? "저장 완료 — 영업직원에게 메일을 보냈습니다":"저장 완료 (영업직원 이메일 없음)";
+      if(r.promoted) msg += " · 대기자가 자동 승격되었습니다";
+      toast(msg);
       await refresh();
     }
   };

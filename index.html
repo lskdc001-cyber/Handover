@@ -98,7 +98,6 @@
   .bk-확정{background:var(--blue-soft); border-color:#A9C8F5; color:#0A4098;}
   .bk-인도완료{background:var(--green-soft); border-color:#A7D9B8; color:#15522A;}
   .bk-취소{background:var(--gray-soft); border-color:#D3D5D9; color:var(--gray); text-decoration:line-through;}
-  .bk-대기{background:#F0E9FB; border-color:#CDB4EA; color:#5B2E91;}
   .stbadge{font-size:10px; font-weight:800; border-radius:4px; padding:1px 5px; float:right;}
   .overlay{
     position:fixed; inset:0; background:rgba(10,14,20,.55); display:none;
@@ -171,8 +170,8 @@
 </header>
 
 <div class="setup-warn" id="setupWarn" style="display:none">
-  ⚠ 아직 서버 주소가 설정되지 않았습니다. 이 파일을 메모장으로 열어 상단의
-  <b>SCRIPT_URL</b>에 구글 앱스 스크립트 배포 URL을 붙여넣으세요. (설치안내서 3단계 참고)
+  ⚠ Firebase 설정이 비어 있습니다. 이 파일을 메모장으로 열어 상단의
+  <b>firebaseConfig</b>에 Firebase 콘솔에서 복사한 설정을 붙여넣으세요. (Firebase 안내서 3단계)
 </div>
 
 <div class="infobar" id="infobar"></div>
@@ -206,7 +205,7 @@
     </div>
     <div class="fld"><label>고객명 *</label><input id="fCustomer" placeholder="예: 홍길동" maxlength="30"></div>
     <div class="fld"><label>차종 *</label><input id="fCar" placeholder="예: E300 4MATIC" maxlength="40"></div>
-    <div class="fld"><label>차대번호 <span style="font-weight:400;color:var(--silver)">(선택)</span></label>
+    <div class="fld"><label>차대번호 * <span style="font-weight:400;color:var(--silver)">(필수 · 본인·PE만 원본 표시)</span></label>
       <input id="fVin" placeholder="예: W1KZF8DB1PA123456" maxlength="20" style="text-transform:uppercase"></div>
     <div class="row2">
       <div class="fld" id="fRepWrap" style="display:none"><label>영업직원 (PE 수정)</label><input id="fRep" maxlength="20"></div>
@@ -215,7 +214,7 @@
     </div>
     <div class="fld" id="fWho" style="background:#F2F6FD;border:1px solid #C9DCF7;border-radius:8px;padding:9px 11px;font-size:12.5px;color:#0A4098"></div>
     <div class="fld"><label>업무구분</label>
-      <select id="fType"><option>출고인도</option><option>시승</option><option>케어</option><option>서류</option><option>기타</option></select></div>
+      <select id="fType"><option>출고인도</option><option>서류</option><option>기타</option></select></div>
     <div class="fld"><label>메모</label><input id="fMemo" placeholder="특이사항 (선택)" maxlength="80"></div>
     <div class="modal-actions">
       <button class="btn btn-light" data-close>닫기</button>
@@ -232,7 +231,7 @@
     <div id="dBody"></div>
     <div id="dPeActions" style="display:none">
       <div class="fld" style="margin-top:14px"><label>상태 변경 (PE 전용) — 저장 시 영업직원에게 이메일 통보</label>
-        <select id="dStatus"><option>대기</option><option>요청</option><option>확정</option><option>인도완료</option><option>취소</option></select>
+        <select id="dStatus"><option>요청</option><option>확정</option><option>인도완료</option><option>취소</option></select>
       </div>
       <div class="modal-actions">
         <button class="btn btn-red" id="dDelete">삭제</button>
@@ -269,7 +268,7 @@
 <div class="overlay" id="pesOverlay">
   <div class="modal">
     <h3>PE 명단·이메일 관리</h3>
-    <p class="sub">이메일은 예약 알림 수신용입니다. 화면에는 이름만 표시됩니다.</p>
+    <p class="sub">근무표에 표시할 PE 이름 목록입니다. 알림 메일은 각 PE의 로그인 계정으로 자동 발송됩니다.</p>
     <div id="pesBody"></div>
     <button class="btn btn-light" id="pesAddRow" style="margin-top:4px">＋ 직원 추가</button>
     <div class="modal-actions">
@@ -287,7 +286,8 @@
     <div class="fld" id="aNameWrap" style="display:none"><label>이름 *</label><input id="aName" placeholder="실명 입력" maxlength="20"></div>
     <div class="fld"><label>이메일 (ID) *</label><input id="aEmail" placeholder="hong@hansung.co.kr" maxlength="60">
       <div class="hint">가입은 회사 이메일(@hansung.co.kr)만 가능합니다</div></div>
-    <div class="fld"><label>비밀번호 * <span style="font-weight:400;color:var(--silver)">(6자 이상)</span></label><input id="aPw" type="password" maxlength="40"></div>
+    <div class="fld"><label>비밀번호 * <span style="font-weight:400;color:var(--silver)">(6자 이상)</span></label><input id="aPw" type="password" maxlength="40">
+      <div class="hint"><a href="#" id="aResetPw" style="color:var(--blue)">비밀번호를 잊으셨나요? 재설정 메일 받기</a></div></div>
     <div class="fld" id="aPw2Wrap" style="display:none"><label>비밀번호 확인 *</label><input id="aPw2" type="password" maxlength="40"></div>
     <div class="fld" id="aPeWrap" style="display:none">
       <label style="display:flex;gap:8px;align-items:flex-start;font-weight:400;cursor:pointer">
@@ -295,9 +295,9 @@
         <span>PE(출고직원)로 가입 신청<br><span style="color:var(--silver);font-size:11.5px">기존 PE의 승인 후 PE 권한이 활성화됩니다. 이름은 근무표의 표기와 동일하게 입력하세요.</span></span>
       </label>
     </div>
-    <div class="fld" id="aCodeWrap" style="display:none"><label>이메일 인증번호 *</label>
-      <input id="aCode" inputmode="numeric" maxlength="6" placeholder="메일로 받은 6자리 숫자">
-      <div class="hint">10분간 유효 · 메일이 없으면 스팸함 확인 · <a href="#" id="aResend">인증번호 재발송</a></div>
+    <div class="fld" id="aCodeWrap" style="display:none">
+      <div class="lock-note" style="margin-top:0">📧 회사 메일로 <b>인증 링크</b>를 보냈습니다.<br>
+      메일 속 링크를 클릭한 뒤, 아래 <b>[인증 완료 확인]</b> 버튼을 눌러주세요. (스팸함도 확인)</div>
     </div>
     <div class="lock-note" style="margin-top:0">다른 사이트에서 쓰는 비밀번호를 재사용하지 마세요. 접수·확정 알림이 이 이메일로 발송됩니다.</div>
     <div class="modal-actions">
@@ -311,7 +311,7 @@
 <div class="overlay" id="accOverlay">
   <div class="modal">
     <h3>직원 계정 관리</h3>
-    <p class="sub">비밀번호 분실 시 임시 비밀번호로 초기화해 주세요</p>
+    <p class="sub">비밀번호 분실은 로그인 화면의 '재설정 메일'로 본인이 직접 처리합니다</p>
     <div id="accList" style="max-height:300px;overflow-y:auto"></div>
     <div class="modal-actions"><button class="btn btn-light" data-close>닫기</button></div>
   </div>
@@ -319,518 +319,514 @@
 
 <div class="toast" id="toast"></div>
 
-<script>
-(function(){
-  "use strict";
+<script type="module">
+/* ★★★ 설치 시 여기만 수정 ★★★
+   Firebase 콘솔 → 프로젝트 설정 → 내 앱 → SDK 설정에서 복사한 값을 붙여넣으세요. */
+const firebaseConfig = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+const REGION = "asia-northeast3";      // 서울
+const DOMAIN = "hansung.co.kr";        // 가입 허용 도메인
 
-  /* ★★★ 설치 시 여기만 수정 ★★★
-     구글 앱스 스크립트 배포 후 받은 웹 앱 URL을 따옴표 안에 붙여넣으세요.
-     예: var SCRIPT_URL = "https://script.google.com/macros/s/AKfycb.../exec";  */
-  var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxe6X-PHFmnOEHMXveYf2zBW9vqH2Yto2y9b0pMO15Mxynd4wQ4rNrEG9aVR1EM7EfRyA/exec";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+         sendEmailVerification, sendPasswordResetEmail, signOut,
+         onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, doc, query, where, onSnapshot,
+         setDoc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
-  const TIMES = []; for(let h=9;h<=19;h++) TIMES.push(String(h).padStart(2,"0")+":00");
+const TIMES = []; for (let h = 9; h <= 19; h++) TIMES.push(String(h).padStart(2, "0") + ":00");
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function todayStr() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function toast(m) { const t = $("toast"); t.textContent = m; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2600); }
+function fmtDate(ds) { const [y, m, d] = ds.split("-"); const w = ["일","월","화","수","목","금","토"][new Date(ds + "T00:00:00").getDay()]; return `${Number(m)}월 ${Number(d)}일 (${w})`; }
+function errMsg(e) { return (e && e.message ? e.message : "오류가 발생했습니다").replace(/^Firebase:\s*/, "").replace(/\s*\(.*\)\.?$/, "") || "오류가 발생했습니다"; }
 
-  let auth = null;
-  try{ auth = JSON.parse(localStorage.getItem("hd_auth")||"null"); }catch(e){ auth = null; }
-  let signupMode = false;
-  let codeStage = false;   // 가입 인증번호 입력 단계
-  let curDate = todayStr();
-  let day = { bookings:[], peInfo:{}, pes:[] };
-  let peMode = false;         // 세션 한정
-  let pePin = "";             // PE 모드 중 서버 검증용 (세션 메모리에만 보관)
-  let editingId = null;
-  let detailId = null;
-  let busy = false;
+let app, auth, db, fx, call = {};
+let user = null, profile = { name: "", role: "영업" };
+let peMode = false, signupMode = false, verifyMode = false, busy = false;
+let curDate = todayStr(), day = { bookings: [], peInfo: {} }, pes = [];
+let unsubBk = null, unsubInfo = null, unsubCfg = null, unsubPriv = null;
+let privMap = {};   // 열람 권한이 있는 예약의 원본(고객명·차대번호)
+const dispC = (b) => (privMap[b.id] && privMap[b.id].customer) || b.customerMasked || "";
+const dispV = (b) => (privMap[b.id] && privMap[b.id].vin) || b.vinMasked || "";
+let editingId = null, detailId = null;
 
-  const $ = (id)=>document.getElementById(id);
-  function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
-  function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2600); }
-  function fmtDate(ds){ const [y,m,d]=ds.split("-"); const w=["일","월","화","수","목","금","토"][new Date(ds+"T00:00:00").getDay()]; return `${Number(m)}월 ${Number(d)}일 (${w})`; }
-  function esc(s){ return String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-  function validEmail(s){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s); }
+/* ── 초기화 ── */
+if (!firebaseConfig.apiKey) {
+  $("setupWarn").style.display = "block";
+  $("loadingMsg").textContent = "Firebase 설정 후 사용할 수 있습니다.";
+} else {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  fx = getFunctions(app, REGION);
+  ["createBooking","setStatus","editBooking","deleteBooking","cancelOwn",
+   "approvePe","revokePe","deleteAccount","exportRange"].forEach(n => call[n] = httpsCallable(fx, n));
 
-  /* ── 서버 통신 ── */
-  async function api(action, payload){
-    if(!SCRIPT_URL){ toast("서버 주소가 설정되지 않았습니다 (설치안내서 참고)"); throw new Error("no url"); }
-    const res = await fetch(SCRIPT_URL, {
-      method:"POST",
-      headers:{ "Content-Type":"text/plain;charset=utf-8" },
-      body: JSON.stringify(Object.assign({action:action, token:(auth&&auth.token)||""}, payload||{}))
-    });
-    const data = await res.json();
-    if(!data.ok && data.error==="AUTH"){ doLogout(false); toast("로그인이 필요합니다"); throw new Error("auth"); }
-    if(!data.ok && data.error) toast(data.error);
-    return data;
-  }
+  onAuthStateChanged(auth, async (u) => {
+    user = u;
+    if (!u) { teardown(); setAuthMode(false); showAuth(); return; }
+    if (!u.emailVerified) { setVerifyMode(true); showAuth(); return; }
+    await u.getIdToken(true);                 // email_verified 클레임 갱신
+    await loadProfile();
+    $("authOverlay").classList.remove("open");
+    applyAuthUI(); startSubscriptions();
+  });
+}
 
-  /* ── 로그인·가입 ── */
-  function showAuth(){ $("authOverlay").classList.add("open"); setTimeout(()=>$("aEmail").focus(),50); }
-  function setAuthMode(signup){
-    signupMode = signup; codeStage = false;
-    $("aCodeWrap").style.display = "none"; $("aCode").value = "";
-    $("authTitle").textContent = signup? "직원 가입":"로그인";
-    $("aNameWrap").style.display = signup? "block":"none";
-    $("aPw2Wrap").style.display = signup? "block":"none";
-    $("aPeWrap").style.display = signup? "block":"none";
-    $("authGo").textContent = signup? "인증번호 받기":"로그인";
-    $("authSwitch").textContent = signup? "이미 계정이 있어요 → 로그인":"처음이신가요? 가입하기";
-  }
-  function saveAuth(a){ auth=a; try{ localStorage.setItem("hd_auth", JSON.stringify(a)); }catch(e){} applyAuthUI(); }
-  function doLogout(msg=true){
-    auth=null; peMode=false; pePin="";
-    try{ localStorage.removeItem("hd_auth"); }catch(e){}
-    applyAuthUI(); showAuth(); if(msg) toast("로그아웃되었습니다");
-  }
-  function applyAuthUI(){
-    peMode = !!(auth && (auth.role === "PE" || auth.role === "MASTER"));
-    if(!peMode) pePin = "";
-    $("peBadge").textContent = (auth && auth.role==="MASTER") ? "✓ MASTER" : "✓ PE";
-    $("userChip").style.display = auth? "inline-flex":"none";
-    if(auth) $("userName").textContent = auth.name +
-      (auth.role==="PE"||auth.role==="MASTER" ? "" : auth.role==="PE대기" ? " (PE승인대기)" : "");
-  }
-  async function authGo(){
-    const email=$("aEmail").value.trim(), pw=$("aPw").value;
-    if(!email||!pw){ toast("이메일과 비밀번호를 입력해 주세요"); return; }
-    if(signupMode){
-      const name=$("aName").value.trim();
-      if(!name){ toast("이름을 입력해 주세요"); return; }
-      if(!email.toLowerCase().endsWith("@hansung.co.kr")){ toast("회사 이메일(@hansung.co.kr)로만 가입할 수 있습니다"); return; }
-      if(pw.length<6){ toast("비밀번호는 6자 이상"); return; }
-      if(pw!==$("aPw2").value){ toast("비밀번호 확인이 일치하지 않습니다"); return; }
-      if(!codeStage){
-        // 1단계: 인증번호 발송
-        const r = await api("signupStart",{email,name,password:pw,wantPe:$("aWantPe").checked});
-        if(r.ok){
-          codeStage = true;
-          $("aCodeWrap").style.display = "block";
-          $("authGo").textContent = "인증 완료 · 가입하기";
-          toast("인증번호를 이메일로 보냈습니다 — 스팸함도 확인하세요");
-          $("aCode").focus();
-        }
-      }else{
-        // 2단계: 인증번호 확인 → 계정 생성
-        const code = $("aCode").value.trim();
-        if(code.length!==6){ toast("6자리 인증번호를 입력해 주세요"); return; }
-        const r = await api("signupVerify",{email,code});
-        if(r.ok){
-          saveAuth({token:r.token,name:r.name,email:r.email,role:r.role});
-          $("authOverlay").classList.remove("open");
-          toast(r.role==="PE대기" ? r.name+" 님, 가입 완료 — PE 승인 대기 중입니다" : r.name+" 님, 가입 완료!");
-          await refresh();
-        }
-      }
-    }else{
-      const r = await api("login",{email,password:pw});
-      if(r.ok){
-        saveAuth({token:r.token,name:r.name,email:r.email,role:r.role});
-        $("authOverlay").classList.remove("open");
-        toast(r.role==="PE" ? r.name+" PE님, 환영합니다" : r.name+" 님, 환영합니다");
-        await refresh();
-      }
+async function loadProfile() {
+  try {
+    const snap = await getDoc(doc(db, "users", user.uid));
+    if (snap.exists()) profile = { name: snap.data().name || user.displayName || "", role: snap.data().role || "영업" };
+    else {
+      profile = { name: user.displayName || user.email.split("@")[0], role: "영업" };
+      await setDoc(doc(db, "users", user.uid), { name: profile.name, email: user.email, role: "영업", createdAt: new Date().toISOString() });
     }
-  }
+  } catch (e) { profile = { name: user.displayName || "", role: "영업" }; }
+}
 
-  async function refresh(){
-    $("loadingMsg").style.display="block"; $("grid").style.display="none";
-    try{
-      const r = await api("getDay", {date:curDate});
-      if(r.ok){ day.bookings=r.bookings||[]; day.peInfo=r.peInfo||{}; day.pes=r.pes||[]; }
-    }catch(e){ $("loadingMsg").textContent="불러오기 실패 — 인터넷 연결과 서버 주소를 확인하세요."; return; }
+/* ── 실시간 구독 ── */
+function teardown() { [unsubBk, unsubInfo, unsubCfg, unsubPriv].forEach(f => f && f()); unsubBk = unsubInfo = unsubCfg = unsubPriv = null; privMap = {}; }
+function startSubscriptions() {
+  if (!unsubCfg) unsubCfg = onSnapshot(doc(db, "config", "main"),
+    s => { pes = (s.exists() && s.data().pes) || []; render(); },
+    () => toast("설정 로드 실패 — 새로고침해 주세요"));
+  subscribeDay(curDate);
+}
+function subscribeDay(date) {
+  if (unsubBk) unsubBk(); if (unsubInfo) unsubInfo(); if (unsubPriv) unsubPriv();
+  privMap = {};
+  // 원본 구독: PE/MASTER는 전체, 영업직원은 본인 것만 (규칙이 서버에서 강제)
+  const pq = peMode
+    ? query(collection(db, "bookingsPrivate"), where("date", "==", date))
+    : query(collection(db, "bookingsPrivate"), where("date", "==", date), where("repUid", "==", user.uid));
+  unsubPriv = onSnapshot(pq, (snap) => {
+    privMap = {}; snap.docs.forEach(d => privMap[d.id] = d.data()); render();
+  }, () => {});
+  $("loadingMsg").style.display = "block"; $("grid").style.display = "none";
+  unsubBk = onSnapshot(query(collection(db, "bookings"), where("date", "==", date)), (snap) => {
+    day.bookings = snap.docs.map(d => ({ id: d.id, ...d.data(), own: d.data().repUid === user.uid }))
+      .sort((a, b) => a.time.localeCompare(b.time));
     render();
-  }
+  }, (e) => { $("loadingMsg").textContent = "불러오기 실패 — " + errMsg(e); });
+  unsubInfo = onSnapshot(doc(db, "peInfo", date), (s) => {
+    day.peInfo = (s.exists() && s.data().info) || {}; render();
+  });
+}
 
-  /* ── 렌더 ── */
-  function peLoc(name){ const inf=day.peInfo[name]||{}; return inf.loc||""; }
-  function render(){
-    const bar = $("infobar"); bar.innerHTML="";
-    day.pes.forEach(name=>{
-      const inf = day.peInfo[name]||{};
-      const loc = inf.loc||"미정";
-      const cls = loc==="강남"?"loc-gn":loc==="청담"?"loc-cd":"loc-off";
-      const drive = inf.drive===undefined? "" : (inf.drive?" · 시승 O":" · 시승 X");
-      const div = document.createElement("div"); div.className="pe-chip";
-      div.innerHTML = `<div class="nm">${esc(name)}</div><div class="loc ${cls}">${esc(loc)}${drive}</div>`+(inf.memo?`<div class="memo">${esc(inf.memo)}</div>`:"");
-      bar.appendChild(div);
-    });
+/* ── 렌더 ── */
+function peLoc(n) { return (day.peInfo[n] || {}).loc || ""; }
+function applyAuthUI() {
+  peMode = profile.role === "PE" || profile.role === "MASTER";
+  $("peBadge").textContent = profile.role === "MASTER" ? "✓ MASTER" : "✓ PE";
+  $("userChip").style.display = user ? "inline-flex" : "none";
+  if (user) $("userName").textContent = profile.name + (peMode ? "" : profile.role === "PE대기" ? " (PE승인대기)" : "");
+}
+function render() {
+  if (!user) return;
+  const bar = $("infobar"); bar.innerHTML = "";
+  pes.forEach(name => {
+    const inf = day.peInfo[name] || {};
+    const loc = inf.loc || "미정";
+    const cls = loc === "강남" ? "loc-gn" : loc === "청담" ? "loc-cd" : "loc-off";
+    const drive = inf.drive === undefined || inf.drive === null ? "" : (inf.drive ? " · 시승 O" : " · 시승 X");
+    const div = document.createElement("div"); div.className = "pe-chip";
+    div.innerHTML = `<div class="nm">${esc(name)}</div><div class="loc ${cls}">${esc(loc)}${drive}</div>` + (inf.memo ? `<div class="memo">${esc(inf.memo)}</div>` : "");
+    bar.appendChild(div);
+  });
 
-    const grid = $("grid");
-    const _todayS = todayStr();
-    const _n = new Date();
-    const _nowHM = String(_n.getHours()).padStart(2,"0")+":"+String(_n.getMinutes()).padStart(2,"0");
-    let html = `<thead><tr><th class="time-h">시간</th>`;
-    day.pes.forEach(name=>{
-      const mine = peMode && auth && auth.name === name;
-      html += `<th>${esc(name)}${mine?" ⭐":""}<small>${mine?"내 스케줄 · ":""}${esc(peLoc(name)||"근무지 미정")}</small></th>`;
-    });
-    html += `</tr></thead><tbody>`;
-    TIMES.forEach(t=>{
-      html += `<tr><td class="time-c">${t}</td>`;
-      day.pes.forEach(name=>{
-        const off = peLoc(name)==="휴무";
-        const items = day.bookings.filter(b=>b.time===t && b.pe===name);
-        const mainCnt = items.filter(b=>b.status!=="취소"&&b.status!=="대기").length;
-        const waitCnt = items.filter(b=>b.status==="대기").length;
-        const full = mainCnt>=1 && waitCnt>=1;
-        html += `<td class="slot${off?" off-col":""}">`;
-        items.forEach(b=>{
-          html += `<div class="bk bk-${b.status}" data-id="${b.id}" role="button" tabindex="0">
-            <span class="stbadge">${b.status==="대기"?"대기 1순위":b.status}</span>
-            <div class="cu">${esc(b.customer)}</div>
-            <div class="cr">${esc(b.car)} · ${esc(b.type)}</div>
-            <div class="rp">영업: ${esc(b.rep)}</div></div>`;
-        });
-        const past = curDate<_todayS || (curDate===_todayS && t<=_nowHM);
-        if(!off && !full && !past) html += `<button class="add-hit" data-time="${t}" data-pe="${esc(name)}" aria-label="${t} ${esc(name)} 등록">＋</button>`;
-        html += `</td>`;
+  const _todayS = todayStr(), _n = new Date();
+  const _nowHM = String(_n.getHours()).padStart(2, "0") + ":" + String(_n.getMinutes()).padStart(2, "0");
+  let html = `<thead><tr><th class="time-h">시간</th>`;
+  pes.forEach(name => {
+    const mine = peMode && profile.name === name;
+    html += `<th>${esc(name)}${mine ? " ⭐" : ""}<small>${mine ? "내 스케줄 · " : ""}${esc(peLoc(name) || "근무지 미정")}</small></th>`;
+  });
+  html += `</tr></thead><tbody>`;
+  TIMES.forEach(t => {
+    html += `<tr><td class="time-c">${t}</td>`;
+    pes.forEach(name => {
+      const off = peLoc(name) === "휴무";
+      const items = day.bookings.filter(b => b.time === t && b.pe === name);
+      const full = items.filter(b => b.status !== "취소").length >= 1;
+      const past = curDate < _todayS || (curDate === _todayS && t <= _nowHM);
+      html += `<td class="slot${off ? " off-col" : ""}">`;
+      items.forEach(b => {
+        html += `<div class="bk bk-${b.status}" data-id="${b.id}" role="button" tabindex="0">
+          <span class="stbadge">${b.status}</span>
+          <div class="cu">${esc(dispC(b))}</div>
+          <div class="cr">${esc(b.car)} · ${esc(b.type)}</div>
+          <div class="rp">영업: ${esc(b.repName)}</div></div>`;
       });
-      html += `</tr>`;
+      if (!off && !full && !past) html += `<button class="add-hit" data-time="${t}" data-pe="${esc(name)}" aria-label="${t} ${esc(name)} 등록">＋</button>`;
+      html += `</td>`;
     });
-    html += `</tbody>`;
-    grid.innerHTML = html;
-    $("loadingMsg").style.display="none"; grid.style.display="table";
-
-    $("peBadge").style.display = peMode? "inline-flex":"none";
-    $("peTools").style.display = peMode? "flex":"none";
-  }
-
-  /* ── 등록/수정 폼 ── */
-  function openForm(time, pe, booking){
-    editingId = booking? booking.id : null;
-    $("formTitle").textContent = booking? "예약 내용 수정 (PE)" : "인도 스케줄 등록";
-    $("formSub").textContent = booking? fmtDate(curDate)+" · PE 모드 수정" : "등록 시 담당 PE에게 이메일이 발송됩니다";
-    $("fTime").innerHTML = TIMES.map(t=>`<option${t===(booking?booking.time:time)?" selected":""}>${t}</option>`).join("");
-    $("fPe").innerHTML = day.pes.map(p=>{
-      const off = peLoc(p)==="휴무";
-      const sel = p===(booking?booking.pe:pe)?" selected":"";
-      return `<option value="${esc(p)}"${sel}${off?" disabled":""}>${esc(p)}${off?" (휴무)":""}</option>`;
-    }).join("");
-    $("fCustomer").value = booking?booking.customer:"";
-    $("fCar").value = booking?booking.car:"";
-    $("fVin").value = booking?(booking.vin||""):"";
-    $("fRep").value = booking?booking.rep:"";
-    $("fRepWrap").style.display = booking? "block":"none";   // PE 수정 시에만 노출
-    $("fDateWrap").style.display = booking? "block":"none";
-    $("fDate").value = curDate;
-    $("fBranch").value = booking?booking.branch||"강남":"강남";
-    $("fType").value = booking?booking.type:"출고인도";
-    $("fMemo").value = booking?(booking.memo||""):"";
-    $("fWho").style.display = booking? "none":"block";
-    if(!booking && auth) $("fWho").textContent = "등록자: "+auth.name+" ("+auth.email+") — 접수·확정 메일이 자동 발송됩니다";
-    $("fSave").textContent = booking? "수정 저장":"등록";
-    $("formOverlay").classList.add("open");
-    setTimeout(()=>$("fCustomer").focus(),50);
-  }
-
-  async function submitForm(){
-    if(busy) return;
-    const customer=$("fCustomer").value.trim(), car=$("fCar").value.trim(), rep=$("fRep").value.trim();
-    const time=$("fTime").value, pe=$("fPe").value;
-    if(!customer||!car){ toast("고객명·차종은 필수입니다"); return; }
-    if(!editingId && !auth){ showAuth(); return; }
-    if(!editingId){
-      const _t=todayStr(), _nn=new Date();
-      const _hm=String(_nn.getHours()).padStart(2,"0")+":"+String(_nn.getMinutes()).padStart(2,"0");
-      if(curDate<_t || (curDate===_t && time<=_hm)){ toast("지난 날짜·시간에는 등록할 수 없습니다"); return; }
-    }
-    if(peLoc(pe)==="휴무"){ toast(pe+" 님은 휴무입니다"); return; }
-    // 슬롯 규칙: 시간대당 본예약 1건 + 대기 1건
-    if(!editingId){
-      const inSlot = day.bookings.filter(b=>b.time===time&&b.pe===pe);
-      const mainCnt = inSlot.filter(b=>b.status!=="취소"&&b.status!=="대기").length;
-      const waitCnt = inSlot.filter(b=>b.status==="대기").length;
-      if(mainCnt>=1 && waitCnt>=1){ toast("이 시간은 예약·대기가 모두 찼습니다. 다른 시간을 선택해 주세요."); return; }
-      if(mainCnt>=1 && !confirm(`${time} ${pe} 님에게 이미 예약이 있습니다.\n[대기 1순위]로 등록할까요?\n(기존 예약 취소 시 자동 승격되어 메일로 안내됩니다)`)) return;
-    }
-
-    busy=true; $("fSave").disabled=true; $("fSave").textContent="저장 중...";
-    try{
-      if(editingId){
-        const r = await api("editBooking", { pin:pePin, id:editingId,
-          fields:{date:$("fDate").value||curDate,time,pe,customer,car,rep,vin:$("fVin").value.trim().toUpperCase(),branch:$("fBranch").value,type:$("fType").value,memo:$("fMemo").value.trim()} });
-        if(r.ok){
-          $("formOverlay").classList.remove("open");
-          let m = "수정되었습니다";
-          if(r.moved && $("fDate").value && $("fDate").value!==curDate) m += " — "+$("fDate").value+" 보드에서 확인하세요";
-          if(r.promoted) m += " · 원래 자리의 대기자가 승격되었습니다";
-          toast(m); await refresh();
-        }
-      }else{
-        const r = await api("addBooking", { date:curDate,
-          booking:{time,pe,customer,car,vin:$("fVin").value.trim().toUpperCase(),branch:$("fBranch").value,type:$("fType").value,memo:$("fMemo").value.trim()} });
-        if(r.ok){
-          $("formOverlay").classList.remove("open");
-          if(r.dup){ toast("이미 접수된 예약입니다 (중복 등록 방지)"); await refresh(); return; }
-          const what = r.status==="대기" ? "대기 1순위로 등록되었습니다" : "등록 완료";
-          toast(r.mailed? what+" — 담당 PE에게 메일 발송":what+" (PE 이메일 미설정으로 알림 생략)");
-          await refresh();
-        }
-      }
-    }catch(e){ /* api()에서 안내됨 */ }
-    finally{ busy=false; $("fSave").disabled=false; $("fSave").textContent=editingId?"수정 저장":"등록"; editingId=null; }
-  }
-
-  /* ── 상세 ── */
-  function openDetail(id){
-    const b = day.bookings.find(x=>x.id===id); if(!b) return;
-    detailId = id;
-    $("dWhen").textContent = `${fmtDate(curDate)} ${b.time} · 담당 PE: ${b.pe}`;
-    $("dBody").innerHTML = `
-      <div class="detail-line"><b>고객명</b><span>${esc(b.customer)}</span></div>
-      <div class="detail-line"><b>차종</b><span>${esc(b.car)}</span></div>
-      ${b.vin?`<div class="detail-line"><b>차대번호</b><span>${esc(b.vin)}</span></div>`:""}
-      <div class="detail-line"><b>업무구분</b><span>${esc(b.type)}</span></div>
-      <div class="detail-line"><b>영업직원</b><span>${esc(b.rep)} (${esc(b.branch)})</span></div>
-      <div class="detail-line"><b>상태</b><span>${esc(b.status)}</span></div>
-      ${b.memo?`<div class="detail-line"><b>메모</b><span>${esc(b.memo)}</span></div>`:""}`;
-    if(peMode){
-      $("dPeActions").style.display="block"; $("dLockNote").style.display="none"; $("dCloseOnly").style.display="none";
-      $("dStatus").value = b.status;
-    }else{
-      $("dPeActions").style.display="none";
-      const canSelf = !!b.own && (b.status==="요청" || b.status==="대기");
-      $("dOwnActions").style.display = canSelf? "flex":"none";
-      $("dCloseOnly").style.display = canSelf? "none":"flex";
-      $("dLockNote").style.display="block";
-      $("dLockNote").innerHTML = canSelf
-        ? `본인이 등록한 예약입니다. <b>요청·대기 상태에서만</b> 직접 취소할 수 있고, 확정 후에는 담당 PE(${esc(b.pe)})에게 요청해야 합니다. 시간·날짜 변경도 PE에게 요청해 주세요.`
-        : `🔒 수정·시간변경·취소는 <b>담당 PE(${esc(b.pe)})</b>에게 요청해 주세요.<br>처리 결과는 등록하신 이메일로 통보됩니다.`;
-    }
-    $("detailOverlay").classList.add("open");
-  }
-
-  /* ── PE 근무 설정 ── */
-  function openPeInfo(){
-    $("peInfoDate").textContent = fmtDate(curDate)+" 근무 정보";
-    const body = $("peInfoBody"); body.innerHTML="";
-    day.pes.forEach((name,i)=>{
-      const inf = day.peInfo[name]||{};
-      body.insertAdjacentHTML("beforeend",`
-        <div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px">
-          <b style="font-size:13px">${esc(name)}</b>
-          <div class="row2" style="margin-top:6px">
-            <div class="fld" style="margin:0"><label>근무지</label>
-              <select data-pi-loc="${i}">${["미정","강남","청담","휴무"].map(l=>`<option${(inf.loc||"미정")===l?" selected":""}>${l}</option>`).join("")}</select></div>
-            <div class="fld" style="margin:0"><label>시승담당</label>
-              <select data-pi-drive="${i}">
-                <option value=""${inf.drive===undefined?" selected":""}>-</option>
-                <option value="1"${inf.drive===true?" selected":""}>O</option>
-                <option value="0"${inf.drive===false?" selected":""}>X (시승·케어만)</option>
-              </select></div>
-          </div>
-          <div class="fld" style="margin:8px 0 0"><label>비고</label>
-            <input data-pi-memo="${i}" value="${esc(inf.memo||"")}" placeholder="예: 10시 출근, 스케줄 문의는 개인 연락" maxlength="60"></div>
-        </div>`);
-    });
-    $("peInfoOverlay").classList.add("open");
-  }
-  async function savePeInfo(){
-    if(busy) return; busy=true;
-    $("peInfoSave").disabled=true; $("peInfoSave").textContent="저장 중...";
-    try{ await _savePeInfo(); } finally{ busy=false; $("peInfoSave").disabled=false; $("peInfoSave").textContent="저장"; }
-  }
-  async function _savePeInfo(){
-    const info = {};
-    day.pes.forEach((name,i)=>{
-      const loc = document.querySelector(`[data-pi-loc="${i}"]`).value;
-      const dv = document.querySelector(`[data-pi-drive="${i}"]`).value;
-      const memo = document.querySelector(`[data-pi-memo="${i}"]`).value.trim();
-      info[name] = { loc: loc==="미정"?"":loc, drive: dv===""?undefined:dv==="1", memo };
-    });
-    const r = await api("savePeInfo", {pin:pePin, date:curDate, peInfo:info});
-    if(r.ok){ $("peInfoOverlay").classList.remove("open"); toast("근무 정보 저장 완료"); await refresh(); }
-  }
-
-  /* ── PE 명단·이메일 ── */
-  function openPes(){
-    const body = $("pesBody"); body.innerHTML="";
-    day.pes.forEach(name=>addPesRow(name,""));
-    $("pesOverlay").classList.add("open");
-  }
-  function addPesRow(name,email){
-    $("pesBody").insertAdjacentHTML("beforeend",
-      `<div class="pes-row"><input class="pes-nm" placeholder="이름" value="${esc(name)}" maxlength="15">
-       <input class="pes-em" placeholder="알림 이메일 (기존 유지 시 비움)" value="${esc(email)}" maxlength="60"></div>`);
-  }
-  async function savePes(){
-    const names=[...document.querySelectorAll(".pes-nm")].map(i=>i.value.trim());
-    const emails=[...document.querySelectorAll(".pes-em")].map(i=>i.value.trim());
-    const pes=[];
-    for(let i=0;i<names.length;i++){
-      if(!names[i]) continue;
-      if(emails[i] && !validEmail(emails[i])){ toast(names[i]+" 이메일 형식을 확인해 주세요"); return; }
-      pes.push({name:names[i], email:emails[i]});
-    }
-    if(!pes.length){ toast("최소 1명이 필요합니다"); return; }
-    if(!confirm("주의: 이메일 칸을 비워두면 해당 직원의 기존 이메일이 삭제됩니다.\n(이메일 확인·수정은 구글시트 'PE명단' 탭에서도 가능)\n저장할까요?")) return;
-    const r = await api("savePes", {pin:pePin, pes});
-    if(r.ok){ $("pesOverlay").classList.remove("open"); toast("PE 명단 저장 완료"); await refresh(); }
-  }
-
-  /* ── 이벤트 ── */
-  document.addEventListener("click",(e)=>{
-    const t=e.target;
-    if(t.matches("[data-close]")){ t.closest(".overlay").classList.remove("open"); return; }
-    if(t.classList.contains("add-hit")){ openForm(t.dataset.time, t.dataset.pe, null); return; }
-    const bk=t.closest(".bk"); if(bk){ openDetail(bk.dataset.id); return; }
+    html += `</tr>`;
   });
-  document.addEventListener("keydown",(e)=>{
-    if(e.key==="Enter" && e.target.classList && e.target.classList.contains("bk")) openDetail(e.target.dataset.id);
-    if(e.key==="Escape") document.querySelectorAll(".overlay.open").forEach(o=>o.classList.remove("open"));
+  html += `</tbody>`;
+  $("grid").innerHTML = html;
+  $("loadingMsg").style.display = "none"; $("grid").style.display = "table";
+  $("peBadge").style.display = peMode ? "inline-flex" : "none";
+  $("peTools").style.display = peMode ? "flex" : "none";
+}
+
+/* ── 로그인·가입 (Firebase Auth) ── */
+function showAuth() { $("authOverlay").classList.add("open"); setTimeout(() => $("aEmail").focus(), 50); }
+function setAuthMode(signup) {
+  signupMode = signup; verifyMode = false;
+  $("aEmail").disabled = false;
+  $("aCodeWrap").style.display = "none";
+  $("aPw").parentElement.style.display = "block";
+  $("aNameWrap").style.display = signup ? "block" : "none";
+  $("aPw2Wrap").style.display = signup ? "block" : "none";
+  $("aPeWrap").style.display = signup ? "block" : "none";
+  $("authTitle").textContent = signup ? "직원 가입" : "로그인";
+  $("authGo").textContent = signup ? "가입하기" : "로그인";
+  $("authSwitch").textContent = signup ? "이미 계정이 있어요 → 로그인" : "처음이신가요? 가입하기";
+}
+function setVerifyMode(on) {
+  verifyMode = on;
+  if (on) {
+    $("aEmail").value = user ? user.email : $("aEmail").value; $("aEmail").disabled = true;
+    $("aNameWrap").style.display = "none"; $("aPw").parentElement.style.display = "none";
+    $("aPw2Wrap").style.display = "none"; $("aPeWrap").style.display = "none";
+    $("aCodeWrap").style.display = "block";
+    $("authTitle").textContent = "이메일 인증";
+    $("authGo").textContent = "인증 완료 확인";
+    $("authSwitch").textContent = "인증메일 재발송";
+  }
+}
+async function authGo() {
+  if (busy) return; busy = true; $("authGo").disabled = true;
+  try {
+    const email = $("aEmail").value.trim();
+    if (verifyMode) {
+      await user.reload();
+      if (auth.currentUser.emailVerified) {
+        await auth.currentUser.getIdToken(true);
+        await loadProfile(); setAuthMode(false);
+        $("authOverlay").classList.remove("open");
+        toast(profile.role === "PE대기" ? profile.name + " 님, 인증 완료 — PE 승인 대기 중" : profile.name + " 님, 가입·인증 완료!");
+        applyAuthUI(); startSubscriptions();
+      } else toast("아직 인증되지 않았습니다 — 메일의 링크를 먼저 클릭해 주세요");
+      return;
+    }
+    const pw = $("aPw").value;
+    if (!email || !pw) { toast("이메일과 비밀번호를 입력해 주세요"); return; }
+    if (signupMode) {
+      const name = $("aName").value.trim();
+      if (!name) { toast("이름을 입력해 주세요"); return; }
+      if (!email.toLowerCase().endsWith("@" + DOMAIN)) { toast(`회사 이메일(@${DOMAIN})로만 가입할 수 있습니다`); return; }
+      if (pw.length < 6) { toast("비밀번호는 6자 이상"); return; }
+      if (pw !== $("aPw2").value) { toast("비밀번호 확인이 일치하지 않습니다"); return; }
+      const cred = await createUserWithEmailAndPassword(auth, email, pw);
+      await updateProfile(cred.user, { displayName: name });
+      await setDoc(doc(db, "users", cred.user.uid), {
+        name, email: email.toLowerCase(),
+        role: $("aWantPe").checked ? "PE대기" : "영업",
+        createdAt: new Date().toISOString()
+      });
+      await sendEmailVerification(cred.user);
+      setVerifyMode(true);
+      toast("인증 메일을 보냈습니다 — 링크 클릭 후 돌아와 주세요");
+    } else {
+      const cred = await signInWithEmailAndPassword(auth, email, pw);
+      if (!cred.user.emailVerified) { setVerifyMode(true); toast("이메일 인증이 필요합니다"); }
+      // 인증된 경우 onAuthStateChanged가 이어서 처리
+    }
+  } catch (e) {
+    const code = e.code || "";
+    if (code.includes("email-already-in-use")) toast("이미 가입된 이메일입니다. 로그인해 주세요.");
+    else if (code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found")) toast("이메일 또는 비밀번호가 올바르지 않습니다");
+    else if (code.includes("too-many-requests")) toast("시도가 너무 많습니다 — 잠시 후 다시");
+    else toast(errMsg(e));
+  } finally { busy = false; $("authGo").disabled = false; }
+}
+$("authGo").onclick = authGo;
+$("authSwitch").onclick = async () => {
+  if (verifyMode) {
+    try { await sendEmailVerification(auth.currentUser); toast("인증 메일을 재발송했습니다"); }
+    catch (e) { toast(errMsg(e)); }
+    return;
+  }
+  setAuthMode(!signupMode);
+};
+$("aResetPw").onclick = async (ev) => {
+  ev.preventDefault();
+  const email = $("aEmail").value.trim();
+  if (!email) { toast("이메일을 먼저 입력해 주세요"); return; }
+  try { await sendPasswordResetEmail(auth, email); toast("비밀번호 재설정 메일을 보냈습니다"); }
+  catch (e) { toast(errMsg(e)); }
+};
+$("logoutBtn").onclick = async () => { await signOut(auth); toast("로그아웃되었습니다"); };
+$("myPwBtn").onclick = async () => {
+  try { await sendPasswordResetEmail(auth, user.email); toast("비밀번호 재설정 메일을 보냈습니다 — 메일함 확인"); }
+  catch (e) { toast(errMsg(e)); }
+};
+
+/* ── 예약 등록/수정 ── */
+function openForm(time, pe, booking) {
+  editingId = booking ? booking.id : null;
+  $("formTitle").textContent = booking ? "예약 내용 수정 (PE)" : "인도 스케줄 등록";
+  $("formSub").textContent = booking ? fmtDate(curDate) + " · PE 수정" : "등록 시 담당 PE에게 메일이 발송됩니다";
+  $("fTime").innerHTML = TIMES.map(t => `<option${t === (booking ? booking.time : time) ? " selected" : ""}>${t}</option>`).join("");
+  $("fPe").innerHTML = pes.map(p => {
+    const off = peLoc(p) === "휴무";
+    const sel = p === (booking ? booking.pe : pe) ? " selected" : "";
+    return `<option value="${esc(p)}"${sel}${off ? " disabled" : ""}>${esc(p)}${off ? " (휴무)" : ""}</option>`;
+  }).join("");
+  $("fCustomer").value = booking ? dispC(booking) : "";
+  $("fCar").value = booking ? booking.car : "";
+  $("fVin").value = booking ? dispV(booking) : "";
+  $("fRep").value = booking ? booking.repName : "";
+  $("fRepWrap").style.display = "none";                 // 이름은 계정에서 자동
+  $("fDateWrap").style.display = booking ? "block" : "none";
+  $("fDate").value = curDate;
+  $("fBranch").value = booking ? booking.branch || "강남" : "강남";
+  $("fType").value = booking ? booking.type : "출고인도";
+  $("fMemo").value = booking ? (booking.memo || "") : "";
+  $("fWho").style.display = booking ? "none" : "block";
+  if (!booking) $("fWho").textContent = "등록자: " + profile.name + " (" + user.email + ") — 접수·확정 메일이 자동 발송됩니다";
+  $("formOverlay").classList.add("open");
+  setTimeout(() => $("fCustomer").focus(), 50);
+}
+async function submitForm() {
+  if (busy) return;
+  const customer = $("fCustomer").value.trim(), car = $("fCar").value.trim();
+  const time = $("fTime").value, pe = $("fPe").value;
+  if (!customer || !car) { toast("고객명·차종은 필수입니다"); return; }
+  if (!$("fVin").value.trim()) { toast("차대번호는 필수입니다"); return; }
+  busy = true; $("fSave").disabled = true; $("fSave").textContent = "저장 중...";
+  try {
+    if (editingId) {
+      const r = await call.editBooking({ id: editingId, fields: {
+        date: $("fDate").value || curDate, time, pe, customer, car,
+        vin: $("fVin").value.trim(), branch: $("fBranch").value, type: $("fType").value, memo: $("fMemo").value.trim() } });
+      $("formOverlay").classList.remove("open");
+      let m = "수정되었습니다";
+      if (r.data.moved && $("fDate").value !== curDate) m += " — " + $("fDate").value + " 보드에서 확인하세요";
+      toast(m);
+    } else {
+      const r = await call.createBooking({ date: curDate, time, pe, customer, car,
+        vin: $("fVin").value.trim(), branch: $("fBranch").value, type: $("fType").value, memo: $("fMemo").value.trim() });
+      $("formOverlay").classList.remove("open");
+      toast("등록 완료 — 담당 PE에게 메일 발송");
+    }
+  } catch (e) { toast(errMsg(e)); }
+  finally { busy = false; $("fSave").disabled = false; $("fSave").textContent = editingId ? "수정 저장" : "등록"; editingId = null; }
+}
+$("fSave").onclick = submitForm;
+$("fabAdd").onclick = () => {
+  if (!pes.length) { toast("PE 명단이 비어 있습니다 — PE가 [PE 명단]에서 설정해 주세요"); return; }
+  openForm(TIMES[0], pes.find(p => peLoc(p) !== "휴무") || pes[0], null);
+};
+$("datePick").onchange = (e) => { curDate = e.target.value || todayStr(); subscribeDay(curDate); };
+
+/* ── 상세 ── */
+function openDetail(id) {
+  const b = day.bookings.find(x => x.id === id); if (!b) return;
+  detailId = id;
+  $("dWhen").textContent = `${fmtDate(curDate)} ${b.time} · 담당 PE: ${b.pe}`;
+  $("dBody").innerHTML = `
+    <div class="detail-line"><b>고객명</b><span>${esc(dispC(b))}</span></div>
+    <div class="detail-line"><b>차종</b><span>${esc(b.car)}</span></div>
+    ${dispV(b) ? `<div class="detail-line"><b>차대번호</b><span>${esc(dispV(b))}</span></div>` : ""}
+    <div class="detail-line"><b>업무구분</b><span>${esc(b.type)}</span></div>
+    <div class="detail-line"><b>영업직원</b><span>${esc(b.repName)} (${esc(b.branch)})</span></div>
+    <div class="detail-line"><b>상태</b><span>${esc(b.status)}</span></div>
+    ${b.memo ? `<div class="detail-line"><b>메모</b><span>${esc(b.memo)}</span></div>` : ""}`;
+  if (peMode) {
+    $("dPeActions").style.display = "block"; $("dLockNote").style.display = "none";
+    $("dOwnActions").style.display = "none"; $("dCloseOnly").style.display = "none";
+    $("dStatus").value = b.status;
+  } else {
+    $("dPeActions").style.display = "none";
+    const canSelf = !!b.own && b.status === "요청";
+    $("dOwnActions").style.display = canSelf ? "flex" : "none";
+    $("dCloseOnly").style.display = canSelf ? "none" : "flex";
+    $("dLockNote").style.display = "block";
+    $("dLockNote").innerHTML = canSelf
+      ? `본인이 등록한 예약입니다. <b>요청 상태에서만</b> 직접 취소할 수 있고, 확정 후에는 담당 PE(${esc(b.pe)})에게 요청해야 합니다.`
+      : `🔒 수정·시간변경·취소는 <b>담당 PE(${esc(b.pe)})</b>에게 요청해 주세요.<br>처리 결과는 등록하신 이메일로 통보됩니다.`;
+  }
+  $("detailOverlay").classList.add("open");
+}
+async function guarded(btn, label, fn) {
+  if (busy) return; busy = true;
+  const el = $(btn); el.disabled = true; const t0 = el.textContent; el.textContent = "처리 중...";
+  try { await fn(); } catch (e) { toast(errMsg(e)); }
+  finally { busy = false; el.disabled = false; el.textContent = label || t0; }
+}
+$("dApply").onclick = () => guarded("dApply", "상태 저장", async () => {
+  const r = await call.setStatus({ id: detailId, status: $("dStatus").value });
+  $("detailOverlay").classList.remove("open");
+  toast(r.data.unchanged ? "변경 없음" : r.data.mailed ? "저장 완료 — 영업직원에게 메일 발송" : "저장 완료");
+});
+$("dDelete").onclick = () => {
+  if (!confirm("이 예약을 완전히 삭제할까요? 되돌릴 수 없습니다.\n(영업직원에게 통보하려면 삭제 대신 '취소' 상태로 저장하세요)")) return;
+  guarded("dDelete", "삭제", async () => {
+    await call.deleteBooking({ id: detailId });
+    $("detailOverlay").classList.remove("open"); toast("삭제되었습니다");
   });
-
-  $("fabAdd").onclick = ()=>{ if(!day.pes.length){ toast("불러오는 중입니다"); return; } openForm(TIMES[0], day.pes.find(p=>peLoc(p)!=="휴무")||day.pes[0], null); };
-  $("fSave").onclick = submitForm;
-  $("datePick").onchange = async (e)=>{ curDate=e.target.value||todayStr(); await refresh(); };
-
-  // PE 권한은 계정 역할로 자동 부여 (PIN 입력 불필요)
-
-  $("dApply").onclick = async ()=>{
-    if(busy) return; busy=true;
-    $("dApply").disabled=true; $("dApply").textContent="저장 중...";
-    let r; try{ r = await api("updateStatus", {pin:pePin, id:detailId, status:$("dStatus").value}); }
-    catch(e){ r={ok:false}; }
-    finally{ busy=false; $("dApply").disabled=false; $("dApply").textContent="상태 저장"; }
-    if(r.ok){
-      $("detailOverlay").classList.remove("open");
-      let msg = r.mailed? "저장 완료 — 영업직원에게 메일을 보냈습니다":"저장 완료 (영업직원 이메일 없음)";
-      if(r.promoted) msg += " · 대기자가 자동 승격되었습니다";
-      toast(msg);
-      await refresh();
-    }
-  };
-  $("dDelete").onclick = async ()=>{
-    if(busy) return;
-    if(!confirm("이 예약을 완전히 삭제할까요? 되돌릴 수 없습니다.\n(영업직원에게 통보하려면 삭제 대신 '취소' 상태로 저장하세요)")) return;
-    busy=true; $("dDelete").disabled=true;
-    let r; try{ r = await api("deleteBooking", {pin:pePin, id:detailId}); }
-    catch(e){ r={ok:false}; }
-    finally{ busy=false; $("dDelete").disabled=false; }
-    if(r.ok){ $("detailOverlay").classList.remove("open"); toast("삭제되었습니다"); await refresh(); }
-  };
-  $("dOwnCancel").onclick = async ()=>{
-    if(busy) return;
-    if(!confirm("이 예약을 취소할까요?\n(취소 후 재등록은 가능하지만 순번은 새로 받게 됩니다)")) return;
-    busy=true; $("dOwnCancel").disabled=true; $("dOwnCancel").textContent="취소 중...";
-    let r; try{ r = await api("cancelOwn",{id:detailId}); }catch(e){ r={ok:false}; }
-    finally{ busy=false; $("dOwnCancel").disabled=false; $("dOwnCancel").textContent="본인 예약 취소"; }
-    if(r.ok){
-      $("detailOverlay").classList.remove("open");
-      toast("취소되었습니다 — 담당 PE에게 통보됨"+(r.promoted?" · 대기자 자동 승격":""));
-      await refresh();
-    }
-  };
-  $("dEdit").onclick = ()=>{
-    const b = day.bookings.find(x=>x.id===detailId); if(!b) return;
+};
+$("dOwnCancel").onclick = () => {
+  if (!confirm("이 예약을 취소할까요?")) return;
+  guarded("dOwnCancel", "본인 예약 취소", async () => {
+    const r = await call.cancelOwn({ id: detailId });
     $("detailOverlay").classList.remove("open");
-    openForm(b.time, b.pe, b);
-  };
+    toast("취소되었습니다 — 담당 PE에게 통보됨");
+  });
+};
+$("dEdit").onclick = () => {
+  const b = day.bookings.find(x => x.id === detailId); if (!b) return;
+  $("detailOverlay").classList.remove("open");
+  openForm(b.time, b.pe, b);
+};
 
-  $("authGo").onclick = authGo;
-  $("aResend").onclick = async (e)=>{
-    e.preventDefault();
-    const email=$("aEmail").value.trim(), name=$("aName").value.trim(), pw=$("aPw").value;
-    const r = await api("signupStart",{email,name,password:pw,wantPe:$("aWantPe").checked});
-    if(r.ok) toast("인증번호를 다시 보냈습니다");
-  };
-  $("authSwitch").onclick = ()=>setAuthMode(!signupMode);
-  $("logoutBtn").onclick = ()=>doLogout();
-  $("myPwBtn").onclick = async ()=>{
-    const o = prompt("현재 비밀번호"); if(o===null) return;
-    const n = prompt("새 비밀번호 (6자 이상)"); if(n===null) return;
-    const r = await api("changePw",{oldPw:o,newPw:n});
-    if(r.ok) toast("비밀번호가 변경되었습니다");
-  };
-  $("accAdminBtn").onclick = async ()=>{
-    const r = await api("listAccounts",{pin:pePin});
-    if(!r.ok) return;
-    const list=$("accList"); list.innerHTML = r.accounts.length? "" : "<p style='font-size:13px;color:var(--silver)'>가입된 계정이 없습니다</p>";
-    r.accounts.forEach(a=>{
-      const d=document.createElement("div");
-      d.style.cssText="display:flex;align-items:center;gap:8px;border-bottom:1px dashed var(--line);padding:8px 0;font-size:13px";
-      const roleTag = a.role==="PE" ? "🟢 PE" : a.role==="PE대기" ? "🟡 PE대기" : "영업";
-      d.innerHTML = `<span style="flex:1"><b>${esc(a.name)}</b> <span style="font-size:11px;color:var(--silver)">${roleTag}</span><br><span style="color:var(--silver);font-size:11.5px">${esc(a.email)}</span></span>`;
-      const pb=document.createElement("button"); pb.className="btn btn-light";
-      pb.textContent = a.role==="PE" ? "PE해제" : "PE승인";
-      pb.onclick = async ()=>{
-        const act = a.role==="PE" ? "revokePe" : "approvePe";
-        if(!confirm(a.name+" 님을 "+(a.role==="PE"?"PE에서 해제":"PE로 승인")+"할까요?")) return;
-        const rr = await api(act,{pin:pePin,email:a.email});
-        if(rr.ok){ toast("처리되었습니다"); $("accOverlay").classList.remove("open"); }
-      };
-      d.appendChild(pb);
-      const rb=document.createElement("button"); rb.className="btn btn-light"; rb.textContent="비번초기화";
-      rb.onclick = async ()=>{
-        const np = prompt(a.name+" 님의 임시 비밀번호 (6자 이상)"); if(np===null) return;
-        const rr = await api("adminResetPw",{pin:pePin,email:a.email,newPw:np});
-        if(rr.ok) toast("초기화 완료 — 임시 비밀번호를 본인에게 전달하세요");
-      };
-      const db=document.createElement("button"); db.className="btn btn-red"; db.textContent="삭제";
-      db.onclick = async ()=>{
-        if(!confirm(a.name+" ("+a.email+") 계정을 삭제할까요?")) return;
-        const rr = await api("deleteAccount",{pin:pePin,email:a.email});
-        if(rr.ok){ toast("삭제되었습니다"); d.remove(); }
-      };
-      d.appendChild(rb); d.appendChild(db); list.appendChild(d);
+/* ── PE: 근무·휴무 (Firestore 직접 쓰기 — 규칙이 PE만 허용) ── */
+$("peInfoBtn").onclick = () => {
+  $("peInfoDate").textContent = fmtDate(curDate) + " 근무 정보";
+  const body = $("peInfoBody"); body.innerHTML = "";
+  pes.forEach((name, i) => {
+    const inf = day.peInfo[name] || {};
+    body.insertAdjacentHTML("beforeend", `
+      <div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px">
+        <b style="font-size:13px">${esc(name)}</b>
+        <div class="row2" style="margin-top:6px">
+          <div class="fld" style="margin:0"><label>근무지</label>
+            <select data-pi-loc="${i}">${["미정","강남","청담","휴무"].map(l => `<option${(inf.loc || "미정") === l ? " selected" : ""}>${l}</option>`).join("")}</select></div>
+          <div class="fld" style="margin:0"><label>시승담당</label>
+            <select data-pi-drive="${i}">
+              <option value=""${inf.drive == null ? " selected" : ""}>-</option>
+              <option value="1"${inf.drive === true ? " selected" : ""}>O</option>
+              <option value="0"${inf.drive === false ? " selected" : ""}>X (시승·케어만)</option>
+            </select></div>
+        </div>
+        <div class="fld" style="margin:8px 0 0"><label>비고</label>
+          <input data-pi-memo="${i}" value="${esc(inf.memo || "")}" placeholder="예: 10시 출근" maxlength="60"></div>
+      </div>`);
+  });
+  $("peInfoOverlay").classList.add("open");
+};
+$("peInfoSave").onclick = () => guarded("peInfoSave", "저장", async () => {
+  const info = {};
+  pes.forEach((name, i) => {
+    const loc = document.querySelector(`[data-pi-loc="${i}"]`).value;
+    const dv = document.querySelector(`[data-pi-drive="${i}"]`).value;
+    info[name] = { loc: loc === "미정" ? "" : loc, drive: dv === "" ? null : dv === "1",
+                   memo: document.querySelector(`[data-pi-memo="${i}"]`).value.trim() };
+  });
+  await setDoc(doc(db, "peInfo", curDate), { info });
+  $("peInfoOverlay").classList.remove("open"); toast("근무 정보 저장 완료");
+});
+
+/* ── PE: 명단 (config/main.pes) ── */
+$("peNamesBtn").onclick = () => {
+  const body = $("pesBody"); body.innerHTML = "";
+  (pes.length ? pes : [""]).forEach(n => addPesRow(n));
+  $("pesOverlay").classList.add("open");
+};
+function addPesRow(name) {
+  $("pesBody").insertAdjacentHTML("beforeend",
+    `<div class="pes-row" style="grid-template-columns:1fr"><input class="pes-nm" placeholder="근무표에 표시할 이름" value="${esc(name)}" maxlength="15"></div>`);
+}
+$("pesAddRow").onclick = () => addPesRow("");
+$("pesSave").onclick = () => guarded("pesSave", "저장", async () => {
+  const names = [...document.querySelectorAll(".pes-nm")].map(i => i.value.trim()).filter(Boolean).slice(0, 8);
+  if (!names.length) { toast("최소 1명이 필요합니다"); return; }
+  await setDoc(doc(db, "config", "main"), { pes: names }, { merge: true });
+  $("pesOverlay").classList.remove("open"); toast("PE 명단 저장 완료");
+});
+
+/* ── PE: 계정 관리 ── */
+$("accAdminBtn").onclick = async () => {
+  try {
+    const snap = await getDocs(collection(db, "users"));
+    const list = $("accList"); list.innerHTML = snap.empty ? "<p style='font-size:13px;color:var(--silver)'>계정이 없습니다</p>" : "";
+    snap.docs.forEach(d => {
+      const a = d.data(); const uid = d.id;
+      const roleTag = a.role === "MASTER" ? "🔵 MASTER" : a.role === "PE" ? "🟢 PE" : a.role === "PE대기" ? "🟡 PE대기" : "영업";
+      const div = document.createElement("div");
+      div.style.cssText = "display:flex;align-items:center;gap:8px;border-bottom:1px dashed var(--line);padding:8px 0;font-size:13px";
+      div.innerHTML = `<span style="flex:1"><b>${esc(a.name)}</b> <span style="font-size:11px;color:var(--silver)">${roleTag}</span><br><span style="color:var(--silver);font-size:11.5px">${esc(a.email)}</span></span>`;
+      if (a.role !== "MASTER") {
+        const pb = document.createElement("button"); pb.className = "btn btn-light";
+        pb.textContent = a.role === "PE" ? "PE해제" : "PE승인";
+        pb.onclick = async () => {
+          if (!confirm(a.name + " 님을 " + (a.role === "PE" ? "PE에서 해제" : "PE로 승인") + "할까요?")) return;
+          try { await (a.role === "PE" ? call.revokePe : call.approvePe)({ uid }); toast("처리되었습니다"); $("accOverlay").classList.remove("open"); }
+          catch (e) { toast(errMsg(e)); }
+        };
+        const db2 = document.createElement("button"); db2.className = "btn btn-red"; db2.textContent = "삭제";
+        db2.onclick = async () => {
+          if (!confirm(a.name + " (" + a.email + ") 계정을 삭제할까요?")) return;
+          try { await call.deleteAccount({ uid }); toast("삭제되었습니다"); div.remove(); }
+          catch (e) { toast(errMsg(e)); }
+        };
+        div.appendChild(pb); div.appendChild(db2);
+      }
+      list.appendChild(div);
     });
     $("accOverlay").classList.add("open");
-  };
-  $("exportBtn").onclick = async ()=>{
-    const from = prompt("시작일 (YYYY-MM-DD)", curDate.slice(0,8)+"01"); if(from===null) return;
-    const to = prompt("종료일 (YYYY-MM-DD)", curDate); if(to===null) return;
-    const r = await api("exportRange",{pin:pePin,from:from.trim(),to:to.trim()});
-    if(!r.ok) return;
-    if(!r.rows || !r.rows.length){ toast("해당 기간에 예약이 없습니다"); return; }
-    const escCsv = v=>{ v=String(v??""); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
-    const csv = "\uFEFF"+[r.header, ...r.rows].map(row=>row.map(escCsv).join(",")).join("\r\n");
-    const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+  } catch (e) { toast(errMsg(e)); }
+};
+
+/* ── PE: 엑셀 내보내기 ── */
+$("exportBtn").onclick = async () => {
+  const from = prompt("시작일 (YYYY-MM-DD)", curDate.slice(0, 8) + "01"); if (from === null) return;
+  const to = prompt("종료일 (YYYY-MM-DD)", curDate); if (to === null) return;
+  try {
+    const r = await call.exportRange({ from: from.trim(), to: to.trim() });
+    if (!r.data.rows.length) { toast("해당 기간에 예약이 없습니다"); return; }
+    const escCsv = v => { v = String(v ?? ""); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    const csv = "\uFEFF" + [r.data.header, ...r.data.rows].map(row => row.map(escCsv).join(",")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "인도예약_"+from.trim()+"_"+to.trim()+".csv";
+    a.download = "인도예약_" + from.trim() + "_" + to.trim() + ".csv";
     a.click(); URL.revokeObjectURL(a.href);
-    toast(r.rows.length+"건 내보내기 완료 — 엑셀에서 바로 열립니다");
-  };
-  $("peInfoBtn").onclick = openPeInfo;
-  $("peInfoSave").onclick = savePeInfo;
-  $("peNamesBtn").onclick = openPes;
-  $("pesAddRow").onclick = ()=>addPesRow("","");
-  $("pesSave").onclick = savePes;
+    toast(r.data.rows.length + "건 내보내기 완료");
+  } catch (e) { toast(errMsg(e)); }
+};
 
+/* ── 공통 이벤트 ── */
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  if (t.matches("[data-close]")) { t.closest(".overlay").classList.remove("open"); return; }
+  if (t.classList.contains("add-hit")) { openForm(t.dataset.time, t.dataset.pe, null); return; }
+  const bk = t.closest(".bk"); if (bk) { openDetail(bk.dataset.id); return; }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target.classList && e.target.classList.contains("bk")) openDetail(e.target.dataset.id);
+  if (e.key === "Escape") document.querySelectorAll(".overlay.open").forEach(o => { if (o.id !== "authOverlay") o.classList.remove("open"); });
+});
 
-  /* ── 앱 설치 (PWA) ── */
-  let deferredPrompt = null;
-  window.addEventListener("beforeinstallprompt",(e)=>{
-    e.preventDefault(); deferredPrompt = e;
-    $("installBtn").style.display = "inline-block";
-  });
-  $("installBtn").onclick = async ()=>{
-    if(deferredPrompt){
-      deferredPrompt.prompt();
-      const c = await deferredPrompt.userChoice;
-      if(c.outcome === "accepted"){ $("installBtn").style.display="none"; toast("홈 화면에 앱이 설치되었습니다"); }
-      deferredPrompt = null;
-    }else{
-      alert("아이폰: Safari 하단 공유(⬆) 버튼 → '홈 화면에 추가'\n안드로이드: 크롬 메뉴(⋮) → '앱 설치' 또는 '홈 화면에 추가'");
-    }
-  };
-  // 아이폰 사파리는 beforeinstallprompt 미지원 → 안내 버튼 항상 표시
-  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
-  if(isIOS && !isStandalone) $("installBtn").style.display = "inline-block";
+/* ── PWA 설치 ── */
+let deferredPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferredPrompt = e; $("installBtn").style.display = "inline-block"; });
+$("installBtn").onclick = async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const c = await deferredPrompt.userChoice;
+    if (c.outcome === "accepted") { $("installBtn").style.display = "none"; toast("홈 화면에 앱이 설치되었습니다"); }
+    deferredPrompt = null;
+  } else alert("아이폰: Safari 하단 공유(⬆) → '홈 화면에 추가'\n안드로이드: 크롬 메뉴(⋮) → '앱 설치'");
+};
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+if (isIOS && !isStandalone) $("installBtn").style.display = "inline-block";
+if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 
-  if("serviceWorker" in navigator){
-    window.addEventListener("load", ()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
-  }
-
-  /* ── 시작 ── */
-  (async function init(){
-    $("datePick").value = curDate;
-    setAuthMode(false); applyAuthUI();
-    if(!SCRIPT_URL){ $("setupWarn").style.display="block"; $("loadingMsg").textContent="서버 주소 설정 후 사용할 수 있습니다."; return; }
-    if(!auth){ $("loadingMsg").textContent="로그인 후 이용할 수 있습니다."; showAuth(); return; }
-    try{ await refresh(); }catch(e){}
-  })();
-})();
+$("datePick").value = curDate;
+setAuthMode(false);
 </script>
 </body>
 </html>

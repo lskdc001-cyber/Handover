@@ -1,6 +1,6 @@
 /* 차량 인도 스케줄 — 서비스 워커
    화면 파일만 캐시하고, 예약 데이터(구글 서버)는 항상 실시간 조회합니다. */
-var CACHE = "delivery-app-v1";
+var CACHE = "delivery-app-v3";
 var SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", function (e) {

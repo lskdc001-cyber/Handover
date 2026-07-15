@@ -187,7 +187,7 @@
     <div class="loading" id="loadingMsg">스케줄을 불러오는 중...</div>
     <table id="grid" aria-label="시간대별 인도 스케줄" style="display:none"></table>
   </div>
-  <p class="empty-note">※ 팀 공용 보드입니다. 영업직원은 <b>신규 등록만</b> 가능하며(등록 시 담당 PE에게 이메일 자동 발송), 수정·시간변경·취소는 <b>담당 PE에게 요청</b>해 주세요. PE가 확정·취소 처리하면 등록한 영업직원 이메일로 자동 통보됩니다.</p>
+  <p class="empty-note">※ <b>팀 공용 보드</b> — 한 시간대에 예약은 <b>1건</b>만 가능하며, 같은 <b>차대번호</b>는 중복 등록할 수 없습니다(동명이인·재구매 구분). 타인 예약의 고객명·차대번호는 <b>일부만 표시</b>되며 본인·PE만 원본을 봅니다. 등록 시 담당 PE와 본인에게 메일이 자동 발송되고, 내 예약은 <b>요청 상태에서만 직접 취소</b>할 수 있습니다. 확정 후 취소·시간변경은 <b>담당 PE에게 요청</b>해 주세요.</p>
 </div>
 
 <button class="fab" id="fabAdd">＋ 인도 등록</button>
@@ -323,12 +323,12 @@
 /* ★★★ 설치 시 여기만 수정 ★★★
    Firebase 콘솔 → 프로젝트 설정 → 내 앱 → SDK 설정에서 복사한 값을 붙여넣으세요. */
 const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyDbQo94SGlY6LGBUpqpikXKRLfFxtpypjw",
+  authDomain: "gnm-handover-47fe7.firebaseapp.com",
+  projectId: "gnm-handover-47fe7",
+  storageBucket: "gnm-handover-47fe7.firebasestorage.app",
+  messagingSenderId: "812141280281",
+  appId: "1:812141280281:web:cdec0c4b525603062cbe88"
 };
 const REGION = "asia-northeast3";      // 서울
 const DOMAIN = "hansung.co.kr";        // 가입 허용 도메인

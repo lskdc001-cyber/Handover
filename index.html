@@ -179,6 +179,8 @@
   <button class="btn btn-light" id="peInfoBtn">근무·휴무 설정</button>
   <button class="btn btn-light" id="peNamesBtn">PE 명단·이메일</button>
   <button class="btn btn-light" id="accAdminBtn">직원 계정 관리</button>
+  <button class="btn btn-light" id="uploadShiftBtn">📅 근무표 업로드</button>
+  <input type="file" id="shiftFile" accept=".xlsx,.xls,.csv" style="display:none">
   <button class="btn btn-light" id="exportBtn">📊 엑셀 내보내기</button>
 </div>
 
@@ -214,7 +216,7 @@
     </div>
     <div class="fld" id="fWho" style="background:#F2F6FD;border:1px solid #C9DCF7;border-radius:8px;padding:9px 11px;font-size:12.5px;color:#0A4098"></div>
     <div class="fld"><label>업무구분</label>
-      <select id="fType"><option>출고인도</option><option>서류</option><option>기타</option></select></div>
+      <select id="fType"><option>출고인도</option><option>시승</option><option>케어</option><option>서류</option><option>기타</option></select></div>
     <div class="fld"><label>메모</label><input id="fMemo" placeholder="특이사항 (선택)" maxlength="80"></div>
     <div class="modal-actions">
       <button class="btn btn-light" data-close>닫기</button>
@@ -338,7 +340,7 @@ import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
          sendEmailVerification, sendPasswordResetEmail, signOut,
          onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, doc, query, where, onSnapshot,
-         setDoc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+         setDoc, getDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
 const TIMES = []; for (let h = 9; h <= 19; h++) TIMES.push(String(h).padStart(2, "0") + ":00");
@@ -374,7 +376,8 @@ if (!firebaseConfig.apiKey) {
   onAuthStateChanged(auth, async (u) => {
     user = u;
     if (!u) { teardown(); setAuthMode(false); showAuth(); return; }
-    if (!u.emailVerified) { setVerifyMode(true); showAuth(); return; }
+    try { await u.reload(); } catch (e) {}     // 캐시값이 아닌 서버 최신 상태로 재확인 (이중 방어)
+    if (!auth.currentUser || !auth.currentUser.emailVerified) { setVerifyMode(true); showAuth(); return; }
     await u.getIdToken(true);                 // email_verified 클레임 갱신
     await loadProfile();
     $("authOverlay").classList.remove("open");
@@ -777,6 +780,121 @@ $("accAdminBtn").onclick = async () => {
     });
     $("accOverlay").classList.add("open");
   } catch (e) { toast(errMsg(e)); }
+};
+
+/* ── PE: 근무표 엑셀 일괄 업로드 (전시장별 항목 × 날짜별 열 형식) ── */
+function normSheetDate(v) {
+  if (v instanceof Date) {
+    const p = n => String(n).padStart(2, "0");
+    return `${v.getFullYear()}-${p(v.getMonth() + 1)}-${p(v.getDate())}`;
+  }
+  const s = String(v ?? "").trim();
+  const m = s.match(/^(\d{4})[.\-\/\s]+(\d{1,2})[.\-\/\s]+(\d{1,2})/);
+  return m ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}` : "";
+}
+function normLabel(s) { return String(s ?? "").replace(/\s+/g, "").trim(); }
+
+const SHIFT_LOC_ROWS = {
+  "청담9시~18시": { loc: "청담", memo: "9시출근" },
+  "청담10시~19시": { loc: "청담", memo: "10시출근" },
+  "강남9시~18시(주말10시~19시)": { loc: "강남", memo: "" },
+};
+function parseShiftSheet(rows, peList) {
+  let dateRowIdx = -1, labelCol = -1;
+  for (let r = 0; r < rows.length && dateRowIdx < 0; r++) {
+    for (let c = 0; c < (rows[r] || []).length; c++) {
+      if (normLabel(rows[r][c]) === "날짜") { dateRowIdx = r; labelCol = c; break; }
+    }
+  }
+  if (dateRowIdx < 0) return { error: "'날짜' 행을 찾지 못했습니다 (템플릿 A열 확인)" };
+
+  const dateCols = [];
+  const headerRow = rows[dateRowIdx];
+  for (let c = labelCol + 1; c < headerRow.length; c++) {
+    const d = normSheetDate(headerRow[c]);
+    if (d) dateCols.push({ col: c, date: d });
+  }
+  if (!dateCols.length) return { error: "날짜 열을 찾지 못했습니다" };
+
+  const rowByLabel = {};
+  for (let r = dateRowIdx + 1; r < rows.length; r++) {
+    const label = normLabel((rows[r] || [])[labelCol]);
+    if (label) rowByLabel[label] = r;
+  }
+  const need = [...Object.keys(SHIFT_LOC_ROWS), "시승담당", "휴무자"];
+  const missing = need.filter(k => rowByLabel[k] === undefined);
+  if (missing.length) return { error: "다음 항목 행을 찾지 못했습니다: " + missing.join(", ") };
+
+  const plan = [], errs = [];
+  for (const { col, date } of dateCols) {
+    const info = {};
+    const setLoc = (name, loc, memo) => {
+      name = String(name || "").trim(); if (!name) return;
+      if (!peList.includes(name)) { errs.push(`${date} '${name}' — PE 명단에 없는 이름`); return; }
+      if (info[name] && info[name].loc && info[name].loc !== loc) {
+        errs.push(`${date} ${name} — 두 곳에 동시 배정됨 (${info[name].loc} / ${loc})`); return;
+      }
+      info[name] = { ...(info[name] || {}), loc, memo: memo || (info[name]?.memo || "") };
+    };
+    for (const key of Object.keys(SHIFT_LOC_ROWS)) {
+      const raw = rows[rowByLabel[key]][col];
+      if (raw) String(raw).split(/[,\/、]+/).forEach(nm => setLoc(nm, SHIFT_LOC_ROWS[key].loc, SHIFT_LOC_ROWS[key].memo));
+    }
+    const driveRaw = rows[rowByLabel["시승담당"]][col];
+    if (driveRaw) {
+      const nm = String(driveRaw).trim();
+      if (!peList.includes(nm)) errs.push(`${date} '${nm}' — 시승담당에 PE 명단에 없는 이름`);
+      else if (!info[nm]) errs.push(`${date} ${nm} — 시승담당인데 근무 배정이 없습니다`);
+      else info[nm].drive = true;
+    }
+    const offRaw = rows[rowByLabel["휴무자"]][col];
+    if (offRaw) {
+      String(offRaw).split(/[,\/、]+/).forEach(raw => {
+        const nm = raw.trim(); if (!nm) return;
+        if (!peList.includes(nm)) { errs.push(`${date} '${nm}' — 휴무자에 PE 명단에 없는 이름`); return; }
+        if (info[nm]) { errs.push(`${date} ${nm} — 근무 배정과 휴무자에 동시 등록됨`); return; }
+        info[nm] = { loc: "휴무", drive: null, memo: "" };
+      });
+    }
+    for (const nm of peList) if (info[nm] && info[nm].drive === undefined) info[nm].drive = (info[nm].loc === "휴무") ? null : false;
+    if (Object.keys(info).length) plan.push({ date, info });
+  }
+  return { plan, errs };
+}
+
+$("uploadShiftBtn").onclick = () => { $("shiftFile").value = ""; $("shiftFile").click(); };
+$("shiftFile").onchange = async (ev) => {
+  const file = ev.target.files[0]; if (!file) return;
+  if (busy) return; busy = true;
+  $("uploadShiftBtn").disabled = true; $("uploadShiftBtn").textContent = "읽는 중...";
+  try {
+    const XLSX = await import("https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs");
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { cellDates: true });
+    const sheet = wb.Sheets["근무표"] || wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false });
+    if (!rows.length) { toast("파일이 비어 있습니다"); return; }
+
+    const { error, plan, errs } = parseShiftSheet(rows, pes);
+    if (error) { toast(error); return; }
+    if (errs.length) { alert("입력 오류 " + errs.length + "건 — 수정 후 다시 올려주세요.\n\n" + errs.slice(0, 12).join("\n")); return; }
+    if (!plan.length) { toast("반영할 날짜가 없습니다"); return; }
+
+    const msg = `${plan.length}일치 근무표를 반영합니다.\n(${plan[0].date} ~ ${plan[plan.length - 1].date})\n\n기존에 저장된 해당 날짜의 근무 정보는 덮어쓰기 됩니다.`;
+    if (!confirm(msg + "\n\n진행할까요?")) return;
+
+    $("uploadShiftBtn").textContent = "반영 중...";
+    for (let i = 0; i < plan.length; i += 400) {
+      const batch = writeBatch(db);
+      plan.slice(i, i + 400).forEach(p => batch.set(doc(db, "peInfo", p.date), { info: p.info }));
+      await batch.commit();
+    }
+    toast(`✅ ${plan.length}일치 근무표 반영 완료`);
+  } catch (e) {
+    toast("업로드 실패 — " + errMsg(e));
+  } finally {
+    busy = false; $("uploadShiftBtn").disabled = false; $("uploadShiftBtn").textContent = "📅 근무표 업로드";
+  }
 };
 
 /* ── PE: 엑셀 내보내기 ── */

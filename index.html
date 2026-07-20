@@ -879,7 +879,7 @@ function parseShiftSheet(rows, peList) {
         if (dv) {
           if (!peList.includes(dv.name)) errs.push(`${date} '${dv.name}' — 시승담당에 PE 명단에 없는 이름`);
           else if (info[dv.name]) info[dv.name].drive = true;
-          else info[dv.name] = { loc: "", drive: true, memo: "시승담당" };   // 시승 전담(별도 역할)
+          else info[dv.name] = { loc: "청담", drive: true, memo: "시승담당" };   // 청담 시승 전담(별도 역할)
         }
       }
       let offRaw = String(rows[rOff][col] ?? "");

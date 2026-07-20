@@ -457,7 +457,10 @@ function render() {
   TIMES.forEach(t => {
     html += `<tr><td class="time-c">${t}</td>`;
     pes.forEach(name => {
-      const off = peLoc(name) === "휴무";
+      const inf = day.peInfo[name] || {};
+      const hardOff = inf.loc === "휴무";
+      const driveDuty = inf.drive === true;
+      const off = hardOff || (driveDuty && !peMode);   // 시승담당(O)은 영업직원에게만 차단, PE·MASTER는 등록 가능
       const items = day.bookings.filter(b => b.time === t && b.pe === name);
       const full = items.filter(b => b.status !== "취소").length >= 1;
       const past = curDate < _todayS || (curDate === _todayS && t <= _nowHM);

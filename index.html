@@ -210,7 +210,8 @@
     <div class="fld"><label>차대번호 * <span style="font-weight:400;color:var(--silver)">(필수 · 본인·PE만 원본 표시)</span></label>
       <input id="fVin" placeholder="예: W1KZF8DB1PA123456" maxlength="20" style="text-transform:uppercase"></div>
     <div class="row2">
-      <div class="fld" id="fRepWrap" style="display:none"><label>영업직원 (PE 수정)</label><input id="fRep" maxlength="20"></div>
+      <div class="fld" id="fRepWrap" style="display:none"><label>영업직원</label>
+        <input id="fRep" placeholder="예: 홍길동 (비우면 본인 이름으로 등록)" maxlength="20"></div>
       <div class="fld"><label>전시장</label>
         <select id="fBranch"><option>강남</option><option>청담</option><option>기타</option></select></div>
     </div>
@@ -598,14 +599,16 @@ function openForm(time, pe, booking) {
   $("fCar").value = booking ? booking.car : "";
   $("fVin").value = booking ? dispV(booking) : "";
   $("fRep").value = booking ? booking.repName : "";
-  $("fRepWrap").style.display = "none";                 // 이름은 계정에서 자동
+  $("fRepWrap").style.display = peMode ? "block" : "none";   // PE·MASTER는 대리 등록 시 영업직원 지정 가능
   $("fDateWrap").style.display = booking ? "block" : "none";
   $("fDate").value = curDate;
   $("fBranch").value = booking ? booking.branch || "강남" : "강남";
   $("fType").value = booking ? booking.type : "출고인도";
   $("fMemo").value = booking ? (booking.memo || "") : "";
   $("fWho").style.display = booking ? "none" : "block";
-  if (!booking) $("fWho").textContent = "등록자: " + profile.name + " (" + user.email + ") — 접수·확정 메일이 자동 발송됩니다";
+  if (!booking) $("fWho").textContent = peMode
+    ? "처리 계정: " + profile.name + " — 영업직원 칸을 비우면 본인 이름으로 등록됩니다"
+    : "등록자: " + profile.name + " (" + user.email + ") — 접수·확정 메일이 자동 발송됩니다";
   $("formOverlay").classList.add("open");
   setTimeout(() => $("fCustomer").focus(), 50);
 }
@@ -620,14 +623,16 @@ async function submitForm() {
     if (editingId) {
       const r = await call.editBooking({ id: editingId, fields: {
         date: $("fDate").value || curDate, time, pe, customer, car,
-        vin: $("fVin").value.trim(), branch: $("fBranch").value, type: $("fType").value, memo: $("fMemo").value.trim() } });
+        vin: $("fVin").value.trim(), branch: $("fBranch").value, type: $("fType").value, memo: $("fMemo").value.trim(),
+        ...(peMode ? { repName: $("fRep").value.trim() } : {}) } });
       $("formOverlay").classList.remove("open");
       let m = "수정되었습니다";
       if (r.data.moved && $("fDate").value !== curDate) m += " — " + $("fDate").value + " 보드에서 확인하세요";
       toast(m);
     } else {
       const r = await call.createBooking({ date: curDate, time, pe, customer, car,
-        vin: $("fVin").value.trim(), branch: $("fBranch").value, type: $("fType").value, memo: $("fMemo").value.trim() });
+        vin: $("fVin").value.trim(), branch: $("fBranch").value, type: $("fType").value, memo: $("fMemo").value.trim(),
+        ...(peMode ? { repName: $("fRep").value.trim() } : {}) });
       $("formOverlay").classList.remove("open");
       toast("등록 완료 — 담당 PE에게 메일 발송");
     }

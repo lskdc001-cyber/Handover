@@ -344,7 +344,7 @@ import { getFirestore, collection, doc, query, where, onSnapshot,
          setDoc, getDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
-const TIMES = []; for (let h = 9; h <= 19; h++) TIMES.push(String(h).padStart(2, "0") + ":00");
+const TIMES = []; for (let h = 9; h <= 18; h++) TIMES.push(String(h).padStart(2, "0") + ":00");
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 function todayStr() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
@@ -462,6 +462,8 @@ function render() {
       const hardOff = inf.loc === "휴무";
       const driveDuty = inf.drive === true;
       const off = hardOff || (driveDuty && !peMode);   // 시승담당(O)은 영업직원에게만 차단, PE·MASTER는 등록 가능
+      // 청담 10시~19시 근무자는 9시 예약 불가 (근무시간 외) · 19시는 시간표 자체에서 제외됨
+      const outOfShift = inf.memo === "10시출근" && t === "09:00";
       const items = day.bookings.filter(b => b.time === t && b.pe === name);
       const full = items.filter(b => b.status !== "취소").length >= 1;
       const past = curDate < _todayS || (curDate === _todayS && t <= _nowHM);
@@ -473,7 +475,7 @@ function render() {
           <div class="cr">${esc(b.car)} · ${esc(b.type)}</div>
           <div class="rp">영업: ${esc(b.repName)}</div></div>`;
       });
-      if (!off && !full && !past) html += `<button class="add-hit" data-time="${t}" data-pe="${esc(name)}" aria-label="${t} ${esc(name)} 등록">＋</button>`;
+      if (!off && !full && !past && !outOfShift) html += `<button class="add-hit" data-time="${t}" data-pe="${esc(name)}" aria-label="${t} ${esc(name)} 등록">＋</button>`;
       html += `</td>`;
     });
     html += `</tr>`;

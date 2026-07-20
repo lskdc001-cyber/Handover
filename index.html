@@ -782,7 +782,7 @@ $("accAdminBtn").onclick = async () => {
   } catch (e) { toast(errMsg(e)); }
 };
 
-/* ── PE: 근무표 엑셀 일괄 업로드 (전시장별 항목 × 날짜별 열 형식) ── */
+/* ── PE: 근무표 엑셀 일괄 업로드 (실제 습관 그대로 — 주별 블록 × 날짜쌍(출고/시승) 열 형식) ── */
 function normSheetDate(v) {
   if (v instanceof Date) {
     const p = n => String(n).padStart(2, "0");
@@ -793,72 +793,95 @@ function normSheetDate(v) {
   return m ? `${m[1]}-${String(m[2]).padStart(2, "0")}-${String(m[3]).padStart(2, "0")}` : "";
 }
 function normLabel(s) { return String(s ?? "").replace(/\s+/g, "").trim(); }
-
-const SHIFT_LOC_ROWS = {
-  "청담9시~18시": { loc: "청담", memo: "9시출근" },
-  "청담10시~19시": { loc: "청담", memo: "10시출근" },
-  "강남9시~18시(주말10시~19시)": { loc: "강남", memo: "" },
-};
+function cleanShiftName(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s || s === "-") return null;
+  const m = s.match(/^([^\(（]+?)[\(（]([^\)）]*)[\)）]?\s*$/);
+  if (m) return { name: m[1].trim(), note: m[2].trim() };
+  return { name: s, note: "" };
+}
+function findShiftBlocks(rows) {
+  const blocks = [];
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r] || [];
+    for (let c = 0; c < row.length; c++) {
+      if (normLabel(row[c]) === "날짜") { blocks.push({ dateRow: r, labelCol: c }); break; }
+    }
+  }
+  return blocks;
+}
 function parseShiftSheet(rows, peList) {
-  let dateRowIdx = -1, labelCol = -1;
-  for (let r = 0; r < rows.length && dateRowIdx < 0; r++) {
-    for (let c = 0; c < (rows[r] || []).length; c++) {
-      if (normLabel(rows[r][c]) === "날짜") { dateRowIdx = r; labelCol = c; break; }
-    }
-  }
-  if (dateRowIdx < 0) return { error: "'날짜' 행을 찾지 못했습니다 (템플릿 A열 확인)" };
-
-  const dateCols = [];
-  const headerRow = rows[dateRowIdx];
-  for (let c = labelCol + 1; c < headerRow.length; c++) {
-    const d = normSheetDate(headerRow[c]);
-    if (d) dateCols.push({ col: c, date: d });
-  }
-  if (!dateCols.length) return { error: "날짜 열을 찾지 못했습니다" };
-
-  const rowByLabel = {};
-  for (let r = dateRowIdx + 1; r < rows.length; r++) {
-    const label = normLabel((rows[r] || [])[labelCol]);
-    if (label) rowByLabel[label] = r;
-  }
-  const need = [...Object.keys(SHIFT_LOC_ROWS), "시승담당", "휴무자"];
-  const missing = need.filter(k => rowByLabel[k] === undefined);
-  if (missing.length) return { error: "다음 항목 행을 찾지 못했습니다: " + missing.join(", ") };
-
+  const blocks = findShiftBlocks(rows);
+  if (!blocks.length) return { error: "'날짜' 행을 찾지 못했습니다" };
   const plan = [], errs = [];
-  for (const { col, date } of dateCols) {
-    const info = {};
-    const setLoc = (name, loc, memo) => {
-      name = String(name || "").trim(); if (!name) return;
-      if (!peList.includes(name)) { errs.push(`${date} '${name}' — PE 명단에 없는 이름`); return; }
-      if (info[name] && info[name].loc && info[name].loc !== loc) {
-        errs.push(`${date} ${name} — 두 곳에 동시 배정됨 (${info[name].loc} / ${loc})`); return;
+  blocks.forEach((blk, bi) => {
+    const { dateRow, labelCol } = blk;
+    const workRow = dateRow + 2;
+    const rowByLabel = {};
+    const blockEnd = bi + 1 < blocks.length ? blocks[bi + 1].dateRow : rows.length;
+    for (let r = dateRow + 1; r < blockEnd; r++) {
+      const label = normLabel((rows[r] || [])[labelCol]);
+      if (label) rowByLabel[label] = r;
+    }
+    const kGN = Object.keys(rowByLabel).find(k => k.startsWith("청담9시"));
+    const kG10 = Object.keys(rowByLabel).find(k => k.startsWith("청담10시"));
+    const kKN = Object.keys(rowByLabel).find(k => k.startsWith("강남"));
+    const kOff = Object.keys(rowByLabel).find(k => k.startsWith("휴무"));
+    if (!kGN || !kG10 || !kKN || !kOff) {
+      errs.push(`(${bi + 1}번째 주 블록) 청담9시~18시/청담10시~19시/강남/휴무자 행을 모두 찾지 못했습니다`);
+      return;
+    }
+    const rGN = rowByLabel[kGN], rG10 = rowByLabel[kG10], rKN = rowByLabel[kKN], rOff = rowByLabel[kOff];
+    const rOverflow = rOff + 1;
+
+    const dateCols = [];
+    const hdr = rows[dateRow], work = rows[workRow] || [];
+    for (let c = labelCol + 1; c < hdr.length; c++) {
+      const d = normSheetDate(hdr[c]);
+      if (!d) continue;
+      let driveCol = null;
+      for (let cc = c + 1; cc < hdr.length && !normSheetDate(hdr[cc]); cc++) {
+        if (normLabel(work[cc]) === "시승") { driveCol = cc; break; }
       }
-      info[name] = { ...(info[name] || {}), loc, memo: memo || (info[name]?.memo || "") };
-    };
-    for (const key of Object.keys(SHIFT_LOC_ROWS)) {
-      const raw = rows[rowByLabel[key]][col];
-      if (raw) String(raw).split(/[,\/、]+/).forEach(nm => setLoc(nm, SHIFT_LOC_ROWS[key].loc, SHIFT_LOC_ROWS[key].memo));
+      dateCols.push({ date: d, col: c, driveCol });
     }
-    const driveRaw = rows[rowByLabel["시승담당"]][col];
-    if (driveRaw) {
-      const nm = String(driveRaw).trim();
-      if (!peList.includes(nm)) errs.push(`${date} '${nm}' — 시승담당에 PE 명단에 없는 이름`);
-      else if (!info[nm]) errs.push(`${date} ${nm} — 시승담당인데 근무 배정이 없습니다`);
-      else info[nm].drive = true;
-    }
-    const offRaw = rows[rowByLabel["휴무자"]][col];
-    if (offRaw) {
-      String(offRaw).split(/[,\/、]+/).forEach(raw => {
-        const nm = raw.trim(); if (!nm) return;
-        if (!peList.includes(nm)) { errs.push(`${date} '${nm}' — 휴무자에 PE 명단에 없는 이름`); return; }
-        if (info[nm]) { errs.push(`${date} ${nm} — 근무 배정과 휴무자에 동시 등록됨`); return; }
-        info[nm] = { loc: "휴무", drive: null, memo: "" };
+
+    for (const { date, col, driveCol } of dateCols) {
+      const info = {};
+      const setLoc = (raw, loc, memo) => {
+        const parsed = cleanShiftName(raw); if (!parsed) return;
+        const name = parsed.name;
+        if (!peList.includes(name)) { errs.push(`${date} '${name}' — PE 명단에 없는 이름`); return; }
+        if (info[name] && info[name].loc && info[name].loc !== loc) {
+          errs.push(`${date} ${name} — 두 곳에 동시 배정됨 (${info[name].loc}/${loc})`); return;
+        }
+        info[name] = { loc, memo: parsed.note || memo || (info[name]?.memo || ""), drive: info[name]?.drive };
+      };
+      String(rows[rGN][col] ?? "").split(/[,\/、]+/).forEach(nm => setLoc(nm, "청담", "9시출근"));
+      String(rows[rG10][col] ?? "").split(/[,\/、]+/).forEach(nm => setLoc(nm, "청담", "10시출근"));
+      String(rows[rKN][col] ?? "").split(/[,\/、]+/).forEach(nm => setLoc(nm, "강남", ""));
+
+      if (driveCol != null) {
+        const dv = cleanShiftName(rows[rGN][driveCol]);
+        if (dv) {
+          if (!peList.includes(dv.name)) errs.push(`${date} '${dv.name}' — 시승담당에 PE 명단에 없는 이름`);
+          else if (info[dv.name]) info[dv.name].drive = true;
+          else info[dv.name] = { loc: "", drive: true, memo: "시승담당" };   // 시승 전담(별도 역할)
+        }
+      }
+      let offRaw = String(rows[rOff][col] ?? "");
+      if (rows[rOverflow] && rows[rOverflow][col] != null) offRaw += "," + String(rows[rOverflow][col]);
+      offRaw.split(/[,\/、]+/).forEach(raw => {
+        const parsed = cleanShiftName(raw); if (!parsed) return;
+        const name = parsed.name;
+        if (!peList.includes(name)) { errs.push(`${date} '${name}' — 휴무자에 PE 명단에 없는 이름`); return; }
+        if (info[name] && info[name].loc) { errs.push(`${date} ${name} — 근무 배정과 휴무자에 동시 등록됨`); return; }
+        info[name] = { loc: "휴무", drive: null, memo: parsed.note || "" };
       });
+      for (const nm of Object.keys(info)) if (info[nm].drive === undefined) info[nm].drive = (info[nm].loc === "휴무") ? null : false;
+      if (Object.keys(info).length) plan.push({ date, info });
     }
-    for (const nm of peList) if (info[nm] && info[nm].drive === undefined) info[nm].drive = (info[nm].loc === "휴무") ? null : false;
-    if (Object.keys(info).length) plan.push({ date, info });
-  }
+  });
   return { plan, errs };
 }
 
@@ -871,16 +894,25 @@ $("shiftFile").onchange = async (ev) => {
     const XLSX = await import("https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs");
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { cellDates: true });
-    const sheet = wb.Sheets["근무표"] || wb.Sheets[wb.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false });
-    if (!rows.length) { toast("파일이 비어 있습니다"); return; }
+    if (!wb.SheetNames.length) { toast("파일이 비어 있습니다"); return; }
 
-    const { error, plan, errs } = parseShiftSheet(rows, pes);
-    if (error) { toast(error); return; }
+    let plan = [], errs = [], parsedSheets = [], skippedSheets = [];
+    for (const name of wb.SheetNames) {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, blankrows: false });
+      if (!rows.length) continue;
+      const r = parseShiftSheet(rows, pes);
+      if (r.error) { skippedSheets.push(`${name}(${r.error})`); continue; }  // '날짜' 행 없는 시트는 건너뜀
+      parsedSheets.push(name);
+      plan = plan.concat(r.plan);
+      errs = errs.concat(r.errs.map(e => `[${name}] ${e}`));
+    }
+    if (!parsedSheets.length) { toast("근무표 형식의 시트를 찾지 못했습니다"); return; }
     if (errs.length) { alert("입력 오류 " + errs.length + "건 — 수정 후 다시 올려주세요.\n\n" + errs.slice(0, 12).join("\n")); return; }
     if (!plan.length) { toast("반영할 날짜가 없습니다"); return; }
+    plan.sort((a, b) => a.date.localeCompare(b.date));
 
-    const msg = `${plan.length}일치 근무표를 반영합니다.\n(${plan[0].date} ~ ${plan[plan.length - 1].date})\n\n기존에 저장된 해당 날짜의 근무 정보는 덮어쓰기 됩니다.`;
+    let msg = `${parsedSheets.length}개 시트 · ${plan.length}일치 근무표를 반영합니다.\n(${plan[0].date} ~ ${plan[plan.length - 1].date})\n\n기존에 저장된 해당 날짜의 근무 정보는 덮어쓰기 됩니다.`;
+    if (skippedSheets.length) msg += `\n\n⚠ 형식이 맞지 않아 건너뛴 시트: ${skippedSheets.join(", ")}`;
     if (!confirm(msg + "\n\n진행할까요?")) return;
 
     $("uploadShiftBtn").textContent = "반영 중...";

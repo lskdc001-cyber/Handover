@@ -449,7 +449,7 @@ function render() {
   const bar = $("infobar"); bar.innerHTML = "";
   pes.forEach(name => {
     const inf = day.peInfo[name] || {};
-    const loc = inf.loc || "강남";
+    const loc = inf.loc || "청담";
     const cls = loc === "강남" ? "loc-off" : loc === "청담" ? "loc-cd" : "loc-off";
     const div = document.createElement("div"); div.className = "pe-chip";
     div.innerHTML = `<div class="nm">${esc(name)}</div><div class="loc ${cls}">${esc(loc)}${loc === "강남" ? " (예약불가)" : ""}</div>` + (inf.memo ? `<div class="memo">${esc(inf.memo)}</div>` : "");
@@ -461,7 +461,7 @@ function render() {
   let html = `<thead><tr><th class="time-h">시간</th>`;
   pes.forEach(name => {
     const mine = peMode && profile.name === name;
-    html += `<th>${esc(name)}${mine ? " ⭐" : ""}<small>${mine ? "내 스케줄 · " : ""}${esc(peLoc(name) || "강남")}</small></th>`;
+    html += `<th>${esc(name)}${mine ? " ⭐" : ""}<small>${mine ? "내 스케줄 · " : ""}${esc(peLoc(name) || "청담")}</small></th>`;
   });
   html += `</tr></thead><tbody>`;
   TIMES.forEach(t => {
@@ -729,9 +729,9 @@ $("peInfoBtn").onclick = () => {
       <div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px">
         <b style="font-size:13px">${esc(name)}</b>
         <div class="fld" style="margin-top:6px"><label>근무지</label>
-          <select data-pi-loc="${i}">${["강남","청담","휴무"].map(l => `<option${(inf.loc || "강남") === l ? " selected" : ""}>${l}</option>`).join("")}</select>
+          <select data-pi-loc="${i}">${["강남","청담","휴무"].map(l => `<option${(inf.loc || "청담") === l ? " selected" : ""}>${l}</option>`).join("")}</select>
           <div class="hint" style="margin-top:2px">강남 근무자는 휴무와 동일하게 예약이 차단됩니다</div></div>
-        <div class="fld" data-pi-partwrap="${i}" style="margin:8px 0 0;display:${(inf.loc || "강남") === "청담" ? "block" : "none"}"><label>청담 근무 파트</label>
+        <div class="fld" data-pi-partwrap="${i}" style="margin:8px 0 0;display:${(inf.loc || "청담") === "청담" ? "block" : "none"}"><label>청담 근무 파트</label>
           <select data-pi-part="${i}">
             <option value=""${part === "" ? " selected" : ""}>선택 안 함</option>
             <option value="1"${part === "1" ? " selected" : ""}>1파트 (9시~18시)</option>

@@ -724,22 +724,21 @@ $("peInfoBtn").onclick = () => {
   const body = $("peInfoBody"); body.innerHTML = "";
   pes.forEach((name, i) => {
     const inf = day.peInfo[name] || {};
-    const part = inf.memo === "9시출근" ? "1" : inf.memo === "10시출근" ? "2" : "";
+    const part = inf.memo === "10시출근" ? "2" : "1";   // 청담이면 파트 필수 — 기본 1파트
     body.insertAdjacentHTML("beforeend", `
       <div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px">
         <b style="font-size:13px">${esc(name)}</b>
         <div class="fld" style="margin-top:6px"><label>근무지</label>
           <select data-pi-loc="${i}">${["강남","청담","휴무"].map(l => `<option${(inf.loc || "청담") === l ? " selected" : ""}>${l}</option>`).join("")}</select>
           <div class="hint" style="margin-top:2px">강남 근무자는 휴무와 동일하게 예약이 차단됩니다</div></div>
-        <div class="fld" data-pi-partwrap="${i}" style="margin:8px 0 0;display:${(inf.loc || "청담") === "청담" ? "block" : "none"}"><label>청담 근무 파트</label>
+        <div class="fld" data-pi-partwrap="${i}" style="margin:8px 0 0;display:${(inf.loc || "청담") === "청담" ? "block" : "none"}"><label>청담 근무 파트 <span style="font-weight:400;color:var(--red)">(필수)</span></label>
           <select data-pi-part="${i}">
-            <option value=""${part === "" ? " selected" : ""}>선택 안 함</option>
             <option value="1"${part === "1" ? " selected" : ""}>1파트 (9시~18시)</option>
             <option value="2"${part === "2" ? " selected" : ""}>2파트 (10시~19시)</option>
           </select>
           <div class="hint" style="margin-top:2px">2파트는 9시 예약이 자동으로 차단됩니다</div></div>
         <div class="fld" style="margin:8px 0 0"><label>비고</label>
-          <input data-pi-memo="${i}" value="${esc(part ? "" : (inf.memo || ""))}" placeholder="예: 오전 반차" maxlength="60"></div>
+          <input data-pi-memo="${i}" value="${esc(inf.loc === "청담" ? "" : (inf.memo || ""))}" placeholder="예: 오전 반차" maxlength="60"></div>
       </div>`);
   });
   body.querySelectorAll("[data-pi-loc]").forEach(sel => {

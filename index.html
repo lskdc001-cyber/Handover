@@ -81,7 +81,7 @@
     background:#F7F8FA; width:64px; padding:8px 4px;
   }
   td.slot{vertical-align:top; min-width:130px; height:52px; padding:4px; position:relative;}
-  td.slot.off-col{background:repeating-linear-gradient(45deg,#F3F4F6,#F3F4F6 6px,#EBECEF 6px,#EBECEF 12px);}
+  td.slot.off-col{background:repeating-linear-gradient(45deg,#E3E5EA,#E3E5EA 6px,#CBD0D8 6px,#CBD0D8 12px);}
   .add-hit{
     position:absolute; inset:4px; border-radius:6px; border:1px dashed transparent;
     background:none; cursor:pointer; color:transparent; font-size:18px; width:calc(100% - 8px);
@@ -213,7 +213,7 @@
       <div class="fld" id="fRepWrap" style="display:none"><label>영업직원</label>
         <input id="fRep" placeholder="예: 홍길동 (비우면 본인 이름으로 등록)" maxlength="20"></div>
       <div class="fld"><label>전시장</label>
-        <select id="fBranch"><option>강남</option><option>청담</option><option>기타</option></select></div>
+        <select id="fBranch"><option>청담</option></select></div>
     </div>
     <div class="fld" id="fWho" style="background:#F2F6FD;border:1px solid #C9DCF7;border-radius:8px;padding:9px 11px;font-size:12.5px;color:#0A4098"></div>
     <div class="fld"><label>업무구분</label>
@@ -315,7 +315,15 @@
   <div class="modal">
     <h3>직원 계정 관리</h3>
     <p class="sub">비밀번호 분실은 로그인 화면의 '재설정 메일'로 본인이 직접 처리합니다</p>
-    <div id="accList" style="max-height:300px;overflow-y:auto"></div>
+    <div id="accList" style="max-height:220px;overflow-y:auto"></div>
+    <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px">
+      <p class="sub" style="margin-top:0">이용 제한 — 차단된 이메일은 가입해도 시스템을 사용할 수 없습니다</p>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input id="blockEmailInput" placeholder="예: hong@hansung.co.kr" style="flex:1" maxlength="60">
+        <button class="btn btn-red" id="blockEmailBtn">차단</button>
+      </div>
+      <div id="blockList" style="max-height:120px;overflow-y:auto"></div>
+    </div>
     <div class="modal-actions"><button class="btn btn-light" data-close>닫기</button></div>
   </div>
 </div>
@@ -344,7 +352,7 @@ import { getFirestore, collection, doc, query, where, onSnapshot,
          setDoc, getDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
 
-const TIMES = []; for (let h = 9; h <= 18; h++) TIMES.push(String(h).padStart(2, "0") + ":00");
+const TIMES = ["09:00","10:30","13:00","14:30","16:00","17:30"];   // 오전 9시~ / 점심 12~13시 제외 / 오후 13시~ (90분 간격)
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 function todayStr() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
@@ -420,7 +428,9 @@ function subscribeDay(date) {
     day.bookings = snap.docs.map(d => ({ id: d.id, ...d.data(), own: d.data().repUid === user.uid }))
       .sort((a, b) => a.time.localeCompare(b.time));
     render();
-  }, (e) => { $("loadingMsg").textContent = "불러오기 실패 — " + errMsg(e); });
+  }, (e) => { $("loadingMsg").textContent = e.code === "permission-denied"
+    ? "이 계정은 이용이 제한되었습니다. 관리자에게 문의해 주세요."
+    : "불러오기 실패 — " + errMsg(e); });
   unsubInfo = onSnapshot(doc(db, "peInfo", date), (s) => {
     day.peInfo = (s.exists() && s.data().info) || {}; render();
   });
@@ -439,11 +449,10 @@ function render() {
   const bar = $("infobar"); bar.innerHTML = "";
   pes.forEach(name => {
     const inf = day.peInfo[name] || {};
-    const loc = inf.loc || "미정";
-    const cls = loc === "강남" ? "loc-gn" : loc === "청담" ? "loc-cd" : "loc-off";
-    const drive = inf.drive === undefined || inf.drive === null ? "" : (inf.drive ? " · 시승 O" : " · 시승 X");
+    const loc = inf.loc || "강남";
+    const cls = loc === "강남" ? "loc-off" : loc === "청담" ? "loc-cd" : "loc-off";
     const div = document.createElement("div"); div.className = "pe-chip";
-    div.innerHTML = `<div class="nm">${esc(name)}</div><div class="loc ${cls}">${esc(loc)}${drive}</div>` + (inf.memo ? `<div class="memo">${esc(inf.memo)}</div>` : "");
+    div.innerHTML = `<div class="nm">${esc(name)}</div><div class="loc ${cls}">${esc(loc)}${loc === "강남" ? " (예약불가)" : ""}</div>` + (inf.memo ? `<div class="memo">${esc(inf.memo)}</div>` : "");
     bar.appendChild(div);
   });
 
@@ -452,16 +461,15 @@ function render() {
   let html = `<thead><tr><th class="time-h">시간</th>`;
   pes.forEach(name => {
     const mine = peMode && profile.name === name;
-    html += `<th>${esc(name)}${mine ? " ⭐" : ""}<small>${mine ? "내 스케줄 · " : ""}${esc(peLoc(name) || "근무지 미정")}</small></th>`;
+    html += `<th>${esc(name)}${mine ? " ⭐" : ""}<small>${mine ? "내 스케줄 · " : ""}${esc(peLoc(name) || "강남")}</small></th>`;
   });
   html += `</tr></thead><tbody>`;
   TIMES.forEach(t => {
     html += `<tr><td class="time-c">${t}</td>`;
     pes.forEach(name => {
       const inf = day.peInfo[name] || {};
-      const hardOff = inf.loc === "휴무";
-      const driveDuty = inf.drive === true;
-      const off = hardOff || (driveDuty && !peMode);   // 시승담당(O)은 영업직원에게만 차단, PE·MASTER는 등록 가능
+      const hardOff = inf.loc === "휴무" || inf.loc === "강남";   // 강남 근무자는 휴무와 동일하게 예약 차단
+      const off = hardOff;
       // 청담 10시~19시 근무자는 9시 예약 불가 (근무시간 외) · 19시는 시간표 자체에서 제외됨
       const outOfShift = inf.memo === "10시출근" && t === "09:00";
       const items = day.bookings.filter(b => b.time === t && b.pe === name);
@@ -590,9 +598,10 @@ function openForm(time, pe, booking) {
   $("formSub").textContent = booking ? fmtDate(curDate) + " · PE 수정" : "등록 시 담당 PE에게 메일이 발송됩니다";
   $("fTime").innerHTML = TIMES.map(t => `<option${t === (booking ? booking.time : time) ? " selected" : ""}>${t}</option>`).join("");
   $("fPe").innerHTML = pes.map(p => {
-    const off = peLoc(p) === "휴무";
+    const loc = peLoc(p);
+    const off = loc === "휴무" || loc === "강남";
     const sel = p === (booking ? booking.pe : pe) ? " selected" : "";
-    return `<option value="${esc(p)}"${sel}${off ? " disabled" : ""}>${esc(p)}${off ? " (휴무)" : ""}</option>`;
+    return `<option value="${esc(p)}"${sel}${off ? " disabled" : ""}>${esc(p)}${off ? ` (${loc === "강남" ? "강남·예약불가" : "휴무"})` : ""}</option>`;
   }).join("");
   // 담당 PE는 근무 배정에 따라 자동 선택되며, PE·MASTER 계정만 변경할 수 있습니다.
   $("fPe").disabled = !peMode;
@@ -604,7 +613,7 @@ function openForm(time, pe, booking) {
   $("fRepWrap").style.display = peMode ? "block" : "none";   // PE·MASTER는 대리 등록 시 영업직원 지정 가능
   $("fDateWrap").style.display = booking ? "block" : "none";
   $("fDate").value = curDate;
-  $("fBranch").value = booking ? booking.branch || "강남" : "강남";
+  $("fBranch").value = "청담";
   $("fType").value = booking ? booking.type : "출고인도";
   $("fMemo").value = booking ? (booking.memo || "") : "";
   $("fWho").style.display = booking ? "none" : "block";
@@ -644,7 +653,7 @@ async function submitForm() {
 $("fSave").onclick = submitForm;
 $("fabAdd").onclick = () => {
   if (!pes.length) { toast("PE 명단이 비어 있습니다 — PE가 [PE 명단]에서 설정해 주세요"); return; }
-  openForm(TIMES[0], pes.find(p => peLoc(p) !== "휴무") || pes[0], null);
+  openForm(TIMES[0], pes.find(p => peLoc(p) !== "휴무" && peLoc(p) !== "강남") || pes[0], null);
 };
 $("datePick").onchange = (e) => { curDate = e.target.value || todayStr(); subscribeDay(curDate); };
 
@@ -715,22 +724,29 @@ $("peInfoBtn").onclick = () => {
   const body = $("peInfoBody"); body.innerHTML = "";
   pes.forEach((name, i) => {
     const inf = day.peInfo[name] || {};
+    const part = inf.memo === "9시출근" ? "1" : inf.memo === "10시출근" ? "2" : "";
     body.insertAdjacentHTML("beforeend", `
       <div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px">
         <b style="font-size:13px">${esc(name)}</b>
-        <div class="row2" style="margin-top:6px">
-          <div class="fld" style="margin:0"><label>근무지</label>
-            <select data-pi-loc="${i}">${["미정","강남","청담","휴무"].map(l => `<option${(inf.loc || "미정") === l ? " selected" : ""}>${l}</option>`).join("")}</select></div>
-          <div class="fld" style="margin:0"><label>시승담당</label>
-            <select data-pi-drive="${i}">
-              <option value=""${inf.drive == null ? " selected" : ""}>-</option>
-              <option value="1"${inf.drive === true ? " selected" : ""}>O</option>
-              <option value="0"${inf.drive === false ? " selected" : ""}>X (시승·케어만)</option>
-            </select></div>
-        </div>
+        <div class="fld" style="margin-top:6px"><label>근무지</label>
+          <select data-pi-loc="${i}">${["강남","청담","휴무"].map(l => `<option${(inf.loc || "강남") === l ? " selected" : ""}>${l}</option>`).join("")}</select>
+          <div class="hint" style="margin-top:2px">강남 근무자는 휴무와 동일하게 예약이 차단됩니다</div></div>
+        <div class="fld" data-pi-partwrap="${i}" style="margin:8px 0 0;display:${(inf.loc || "강남") === "청담" ? "block" : "none"}"><label>청담 근무 파트</label>
+          <select data-pi-part="${i}">
+            <option value=""${part === "" ? " selected" : ""}>선택 안 함</option>
+            <option value="1"${part === "1" ? " selected" : ""}>1파트 (9시~18시)</option>
+            <option value="2"${part === "2" ? " selected" : ""}>2파트 (10시~19시)</option>
+          </select>
+          <div class="hint" style="margin-top:2px">2파트는 9시 예약이 자동으로 차단됩니다</div></div>
         <div class="fld" style="margin:8px 0 0"><label>비고</label>
-          <input data-pi-memo="${i}" value="${esc(inf.memo || "")}" placeholder="예: 10시 출근" maxlength="60"></div>
+          <input data-pi-memo="${i}" value="${esc(part ? "" : (inf.memo || ""))}" placeholder="예: 오전 반차" maxlength="60"></div>
       </div>`);
+  });
+  body.querySelectorAll("[data-pi-loc]").forEach(sel => {
+    sel.onchange = () => {
+      const i = sel.dataset.piLoc;
+      body.querySelector(`[data-pi-partwrap="${i}"]`).style.display = sel.value === "청담" ? "block" : "none";
+    };
   });
   $("peInfoOverlay").classList.add("open");
 };
@@ -738,9 +754,11 @@ $("peInfoSave").onclick = () => guarded("peInfoSave", "저장", async () => {
   const info = {};
   pes.forEach((name, i) => {
     const loc = document.querySelector(`[data-pi-loc="${i}"]`).value;
-    const dv = document.querySelector(`[data-pi-drive="${i}"]`).value;
-    info[name] = { loc: loc === "미정" ? "" : loc, drive: dv === "" ? null : dv === "1",
-                   memo: document.querySelector(`[data-pi-memo="${i}"]`).value.trim() };
+    const part = document.querySelector(`[data-pi-part="${i}"]`).value;
+    const partMemo = loc === "청담" && part === "1" ? "9시출근" : loc === "청담" && part === "2" ? "10시출근" : "";
+    const freeMemo = document.querySelector(`[data-pi-memo="${i}"]`).value.trim();
+    info[name] = { loc, drive: null,
+                   memo: partMemo || freeMemo };
   });
   await setDoc(doc(db, "peInfo", curDate), { info });
   $("peInfoOverlay").classList.remove("open"); toast("근무 정보 저장 완료");
@@ -765,6 +783,34 @@ $("pesSave").onclick = () => guarded("pesSave", "저장", async () => {
 });
 
 /* ── PE: 계정 관리 ── */
+async function renderBlockList() {
+  const snap = await getDoc(doc(db, "config", "blocklist"));
+  const emails = (snap.exists() && snap.data().emails) || [];
+  const box = $("blockList");
+  box.innerHTML = emails.length ? "" : "<p style='font-size:12px;color:var(--silver)'>차단된 이메일이 없습니다</p>";
+  emails.forEach(email => {
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12.5px";
+    row.innerHTML = `<span style="flex:1">${esc(email)}</span>`;
+    const ub = document.createElement("button"); ub.className = "btn btn-light"; ub.textContent = "해제";
+    ub.onclick = async () => {
+      const next = emails.filter(e => e !== email);
+      await setDoc(doc(db, "config", "blocklist"), { emails: next }, { merge: true });
+      toast("차단 해제되었습니다"); renderBlockList();
+    };
+    row.appendChild(ub); box.appendChild(row);
+  });
+}
+$("blockEmailBtn").onclick = async () => {
+  const email = $("blockEmailInput").value.trim().toLowerCase();
+  if (!email || !email.includes("@")) { toast("이메일 형식이 올바르지 않습니다"); return; }
+  const snap = await getDoc(doc(db, "config", "blocklist"));
+  const emails = (snap.exists() && snap.data().emails) || [];
+  if (emails.includes(email)) { toast("이미 차단된 이메일입니다"); return; }
+  if (!confirm(email + " 계정을 차단할까요? 로그인은 되지만 시스템을 전혀 사용할 수 없게 됩니다.")) return;
+  await setDoc(doc(db, "config", "blocklist"), { emails: [...emails, email] }, { merge: true });
+  $("blockEmailInput").value = ""; toast("차단되었습니다"); renderBlockList();
+};
 $("accAdminBtn").onclick = async () => {
   try {
     const snap = await getDocs(collection(db, "users"));
@@ -793,6 +839,7 @@ $("accAdminBtn").onclick = async () => {
       }
       list.appendChild(div);
     });
+    await renderBlockList();
     $("accOverlay").classList.add("open");
   } catch (e) { toast(errMsg(e)); }
 };
@@ -854,14 +901,10 @@ function parseShiftSheet(rows, peList) {
     for (let c = labelCol + 1; c < hdr.length; c++) {
       const d = normSheetDate(hdr[c]);
       if (!d) continue;
-      let driveCol = null;
-      for (let cc = c + 1; cc < hdr.length && !normSheetDate(hdr[cc]); cc++) {
-        if (normLabel(work[cc]) === "시승") { driveCol = cc; break; }
-      }
-      dateCols.push({ date: d, col: c, driveCol });
+      dateCols.push({ date: d, col: c });
     }
 
-    for (const { date, col, driveCol } of dateCols) {
+    for (const { date, col } of dateCols) {
       const info = {};
       const setLoc = (raw, loc, memo) => {
         const parsed = cleanShiftName(raw); if (!parsed) return;
@@ -870,20 +913,12 @@ function parseShiftSheet(rows, peList) {
         if (info[name] && info[name].loc && info[name].loc !== loc) {
           errs.push(`${date} ${name} — 두 곳에 동시 배정됨 (${info[name].loc}/${loc})`); return;
         }
-        info[name] = { loc, memo: parsed.note || memo || (info[name]?.memo || ""), drive: info[name]?.drive };
+        info[name] = { loc, memo: parsed.note || memo || (info[name]?.memo || ""), drive: null };
       };
       String(rows[rGN][col] ?? "").split(/[,\/、]+/).forEach(nm => setLoc(nm, "청담", "9시출근"));
       String(rows[rG10][col] ?? "").split(/[,\/、]+/).forEach(nm => setLoc(nm, "청담", "10시출근"));
       String(rows[rKN][col] ?? "").split(/[,\/、]+/).forEach(nm => setLoc(nm, "강남", ""));
 
-      if (driveCol != null) {
-        const dv = cleanShiftName(rows[rGN][driveCol]);
-        if (dv) {
-          if (!peList.includes(dv.name)) errs.push(`${date} '${dv.name}' — 시승담당에 PE 명단에 없는 이름`);
-          else if (info[dv.name]) info[dv.name].drive = true;
-          else info[dv.name] = { loc: "청담", drive: true, memo: "시승담당" };   // 청담 시승 전담(별도 역할)
-        }
-      }
       let offRaw = String(rows[rOff][col] ?? "");
       if (rows[rOverflow] && rows[rOverflow][col] != null) offRaw += "," + String(rows[rOverflow][col]);
       offRaw.split(/[,\/、]+/).forEach(raw => {
@@ -893,7 +928,6 @@ function parseShiftSheet(rows, peList) {
         if (info[name] && info[name].loc) { errs.push(`${date} ${name} — 근무 배정과 휴무자에 동시 등록됨`); return; }
         info[name] = { loc: "휴무", drive: null, memo: parsed.note || "" };
       });
-      for (const nm of Object.keys(info)) if (info[nm].drive === undefined) info[nm].drive = (info[nm].loc === "휴무") ? null : false;
       if (Object.keys(info).length) plan.push({ date, info });
     }
   });

@@ -468,7 +468,7 @@ function render() {
     html += `<tr><td class="time-c">${t}</td>`;
     pes.forEach(name => {
       const inf = day.peInfo[name] || {};
-      const hardOff = inf.loc === "휴무" || inf.loc === "강남";   // 강남 근무자는 휴무와 동일하게 예약 차단
+      const hardOff = inf.loc === "휴무" || (inf.loc === "강남" && !peMode);   // 강남은 영업직원만 차단, PE·MASTER는 예외
       const off = hardOff;
       // 청담 10시~19시 근무자는 9시 예약 불가 (근무시간 외) · 19시는 시간표 자체에서 제외됨
       const outOfShift = inf.memo === "10시출근" && t === "09:00";
@@ -599,7 +599,7 @@ function openForm(time, pe, booking) {
   $("fTime").innerHTML = TIMES.map(t => `<option${t === (booking ? booking.time : time) ? " selected" : ""}>${t}</option>`).join("");
   $("fPe").innerHTML = pes.map(p => {
     const loc = peLoc(p);
-    const off = loc === "휴무" || loc === "강남";
+    const off = loc === "휴무" || (loc === "강남" && !peMode);
     const sel = p === (booking ? booking.pe : pe) ? " selected" : "";
     return `<option value="${esc(p)}"${sel}${off ? " disabled" : ""}>${esc(p)}${off ? ` (${loc === "강남" ? "강남·예약불가" : "휴무"})` : ""}</option>`;
   }).join("");

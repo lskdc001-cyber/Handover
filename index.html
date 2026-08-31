@@ -148,6 +148,36 @@
     .infobar{padding:10px;}
   }
   @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+
+  /* 고객용 B3 인쇄 전용 */
+  .print-only{display:none;}
+  @media print {
+    @page { size: B3; margin: 14mm; }
+    body *{visibility:hidden;}
+    #printB3, #printB3 *{visibility:visible;}
+    #printB3{
+      display:block !important; position:absolute; top:0; left:0; width:100%;
+      font-family:'Apple SD Gothic Neo','Malgun Gothic','Segoe UI',sans-serif;
+    }
+    .p-head{text-align:center; margin-bottom:14mm; border-bottom:3px solid #12161C; padding-bottom:8mm;}
+    .p-title{font-size:34pt; font-weight:800; color:#12161C; letter-spacing:1px;}
+    .p-date{font-size:16pt; color:#555; margin-top:4mm;}
+    .p-table{width:100%; border-collapse:collapse; font-size:13pt;}
+    .p-table th{
+      background:#12161C; color:#fff; padding:6mm 3mm; font-size:14pt; border:1px solid #333;
+    }
+    .p-table td{border:1px solid #999; padding:5mm 3mm; text-align:center; vertical-align:top;}
+    .p-time{font-weight:800; background:#F2F3F5; width:9%;}
+    .p-item{margin-bottom:3mm; padding:2mm; border-radius:2mm;}
+    .p-item.p-요청{background:#FBF1DC;}
+    .p-item.p-확정{background:#E7F0FE;}
+    .p-item.p-인도완료{background:#E2F3E8;}
+    .p-item.p-취소{display:none;}
+    .p-cu{font-weight:800; font-size:14pt;}
+    .p-st{font-size:10pt; color:#555;}
+    .p-foot{text-align:center; margin-top:12mm; font-size:11pt; color:#888;}
+    .p-off{color:#aaa; font-size:11pt;}
+  }
 </style>
 </head>
 <body>
@@ -182,6 +212,18 @@
   <button class="btn btn-light" id="uploadShiftBtn">📅 근무표 업로드</button>
   <input type="file" id="shiftFile" accept=".xlsx,.xls,.csv" style="display:none">
   <button class="btn btn-light" id="exportBtn">📊 엑셀 내보내기</button>
+  <button class="btn btn-light" id="printB3Btn">🖨 고객용 인쇄(B3)</button>
+  <button class="btn btn-light" id="pushBtn">🔔 새 요청 알림 켜기</button>
+</div>
+
+<!-- 고객용 B3 인쇄 전용 영역 (평소엔 숨김, 인쇄 시에만 노출) -->
+<div id="printB3" class="print-only">
+  <div class="p-head">
+    <div class="p-title">오늘의 차량 인도 스케줄</div>
+    <div class="p-date" id="p-date"></div>
+  </div>
+  <table class="p-table" id="p-table"></table>
+  <div class="p-foot">담당 PE에게 문의해 주세요 · Mercedes-Benz 한성자동차</div>
 </div>
 
 <div class="wrap">
@@ -343,14 +385,16 @@ const firebaseConfig = {
 };
 const REGION = "asia-northeast3";      // 서울
 const DOMAIN = "hansung.co.kr";        // 가입 허용 도메인
+const VAPID_KEY = "BIcTC2KbQntrWcTsP8UAKCbErnBH-Zn_qPTWMS2kVf1vGoGaL0pn0gQQrsLhCjd91Rv5pOZwu18yoZqk0tMYAzs";                  // ★ Firebase 콘솔 → 프로젝트 설정 → Cloud Messaging → 웹 푸시 인증서 키 쌍 → 여기 붙여넣기
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
          sendEmailVerification, sendPasswordResetEmail, signOut,
          onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, collection, doc, query, where, onSnapshot,
-         setDoc, getDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+         setDoc, getDoc, getDocs, writeBatch, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
+import { getMessaging, getToken, isSupported as fcmSupported } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
 const TIMES = ["09:00","10:30","13:00","14:30","16:00","17:30"];   // 오전 9시~ / 점심 12~13시 제외 / 오후 13시~ (90분 간격)
 const $ = (id) => document.getElementById(id);
@@ -360,7 +404,7 @@ function toast(m) { const t = $("toast"); t.textContent = m; t.classList.add("sh
 function fmtDate(ds) { const [y, m, d] = ds.split("-"); const w = ["일","월","화","수","목","금","토"][new Date(ds + "T00:00:00").getDay()]; return `${Number(m)}월 ${Number(d)}일 (${w})`; }
 function errMsg(e) { return (e && e.message ? e.message : "오류가 발생했습니다").replace(/^Firebase:\s*/, "").replace(/\s*\(.*\)\.?$/, "") || "오류가 발생했습니다"; }
 
-let app, auth, db, fx, call = {};
+let app, auth, db, fx, msg, call = {};
 let user = null, profile = { name: "", role: "영업" };
 let peMode = false, signupMode = false, verifyMode = false, busy = false;
 let curDate = todayStr(), day = { bookings: [], peInfo: {} }, pes = [];
@@ -379,6 +423,7 @@ if (!firebaseConfig.apiKey) {
   auth = getAuth(app);
   db = getFirestore(app);
   fx = getFunctions(app, REGION);
+  try { if (await fcmSupported()) msg = getMessaging(app); } catch (e) {}
   ["createBooking","setStatus","editBooking","deleteBooking","cancelOwn",
    "approvePe","revokePe","deleteAccount","exportRange"].forEach(n => call[n] = httpsCallable(fx, n));
 
@@ -992,6 +1037,46 @@ $("exportBtn").onclick = async () => {
     a.download = "인도예약_" + from.trim() + "_" + to.trim() + ".csv";
     a.click(); URL.revokeObjectURL(a.href);
     toast(r.data.rows.length + "건 내보내기 완료");
+  } catch (e) { toast(errMsg(e)); }
+};
+
+/* ── 고객용 B3 인쇄 (지금 화면에 떠 있는 당일 스케줄 그대로 · 고객명은 항상 마스킹) ── */
+$("printB3Btn").onclick = () => {
+  $("p-date").textContent = fmtDate(curDate);
+  let html = "<thead><tr><th style=\"width:9%\">시간</th>";
+  pes.forEach(name => { html += `<th>${esc(name)} <span style="font-weight:400">(${esc(peLoc(name) || "청담")})</span></th>`; });
+  html += "</tr></thead><tbody>";
+  TIMES.forEach(t => {
+    html += `<tr><td class="p-time">${t}</td>`;
+    pes.forEach(name => {
+      const inf = day.peInfo[name] || {};
+      const hardOff = inf.loc === "휴무" || inf.loc === "강남";
+      const items = day.bookings.filter(b => b.time === t && b.pe === name && b.status !== "취소");
+      html += "<td>";
+      if (!items.length) html += hardOff ? `<span class="p-off">근무 없음</span>` : "";
+      items.forEach(b => {
+        html += `<div class="p-item p-${b.status}"><div class="p-cu">${esc(b.customerMasked || "")}</div><div class="p-st">${esc(b.car)} · ${esc(b.status)}</div></div>`;
+      });
+      html += "</td>";
+    });
+    html += "</tr>";
+  });
+  html += "</tbody>";
+  $("p-table").innerHTML = html;
+  setTimeout(() => window.print(), 60);
+};
+
+/* ── PE 알림(웹푸시) 켜기 — 새 요청이 등록되면 이 기기로 즉시 알림 ── */
+$("pushBtn").onclick = async () => {
+  if (!msg) { toast("이 브라우저·기기는 웹푸시를 지원하지 않습니다"); return; }
+  if (!VAPID_KEY) { toast("아직 알림 설정이 완료되지 않았습니다 — 관리자에게 문의해 주세요"); return; }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") { toast("알림 권한이 거부되었습니다 — 브라우저 설정에서 다시 허용해 주세요"); return; }
+    const token = await getToken(msg, { vapidKey: VAPID_KEY });
+    if (!token) { toast("알림 등록에 실패했습니다 — 다시 시도해 주세요"); return; }
+    await setDoc(doc(db, "users", user.uid), { fcmTokens: arrayUnion(token) }, { merge: true });
+    toast("🔔 이 기기로 새 요청 알림이 켜졌습니다");
   } catch (e) { toast(errMsg(e)); }
 };
 
